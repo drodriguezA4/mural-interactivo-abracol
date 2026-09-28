@@ -2902,6 +2902,157 @@
     }
   }
 
+
+  /* =========================================================
+     VALORES COLABORATIVOS · Supabase
+     ========================================================= */
+  .opinion-chip strong,
+  .mobile-value-chip strong {
+    margin-left:4px;
+    color:var(--orange);
+    font-weight:950;
+  }
+
+  .value-contribution {
+    margin-top:12px;
+    padding-top:12px;
+    border-top:1px solid rgba(21,37,42,.10);
+  }
+
+  .value-contribution label {
+    display:block;
+    margin-bottom:7px;
+    color:#4f6971;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+
+  .value-input-row {
+    display:flex;
+    gap:8px;
+  }
+
+  .value-input-row input {
+    min-width:0;
+    flex:1 1 auto;
+    height:38px;
+    border:1px solid rgba(21,37,42,.14);
+    border-radius:12px;
+    padding:0 11px;
+    background:#fff;
+    color:var(--ink);
+    font:inherit;
+    font-size:12px;
+    font-weight:750;
+    outline:none;
+  }
+
+  .value-input-row input:focus {
+    border-color:rgba(15,157,154,.58);
+    box-shadow:0 0 0 3px rgba(15,157,154,.10);
+  }
+
+  .value-input-row button {
+    flex:0 0 auto;
+    height:38px;
+    border:0;
+    border-radius:12px;
+    padding:0 13px;
+    background:var(--ink);
+    color:#fff;
+    font:inherit;
+    font-size:11px;
+    font-weight:900;
+    cursor:pointer;
+  }
+
+  .value-input-row button:disabled {
+    opacity:.5;
+    cursor:wait;
+  }
+
+  .value-form-note {
+    display:block;
+    margin-top:6px;
+    color:#819097;
+    font-size:9px;
+    font-weight:650;
+  }
+
+  .mobile-contribution {
+    display:none;
+    width:100%;
+    margin-top:10px;
+    gap:6px;
+    align-items:center;
+  }
+
+  .mobile-timeline-item.selected .mobile-contribution {
+    display:flex;
+  }
+
+  .mobile-contribution input {
+    min-width:0;
+    flex:1 1 auto;
+    height:34px;
+    border:1px solid rgba(21,37,42,.13);
+    border-radius:999px;
+    padding:0 11px;
+    background:#fff;
+    color:var(--ink);
+    font:inherit;
+    font-size:10px;
+    font-weight:800;
+    outline:none;
+  }
+
+  .mobile-contribution button {
+    flex:0 0 auto;
+    height:34px;
+    border:0;
+    border-radius:999px;
+    padding:0 11px;
+    background:var(--ink);
+    color:#fff;
+    font:inherit;
+    font-size:9px;
+    font-weight:900;
+  }
+
+  .value-toast {
+    position:fixed;
+    left:50%;
+    bottom:22px;
+    z-index:3000;
+    transform:translate(-50%, 18px);
+    opacity:0;
+    pointer-events:none;
+    max-width:min(520px, calc(100% - 24px));
+    padding:10px 15px;
+    border-radius:999px;
+    background:rgba(17,37,43,.96);
+    color:#fff;
+    font-size:11px;
+    font-weight:850;
+    text-align:center;
+    box-shadow:0 14px 38px rgba(0,0,0,.24);
+    transition:opacity .24s ease, transform .24s ease;
+  }
+
+  .value-toast.show {
+    opacity:1;
+    transform:translate(-50%, 0);
+  }
+
+  @media (max-width:900px) {
+    .value-toast {
+      bottom:12px;
+      font-size:10px;
+    }
+  }
+
 </style>
 </head>
 <body>
@@ -2958,6 +3109,16 @@
             </div>
             <div class="opinion-chips" id="opinionChips" aria-live="polite"></div>
           </div>
+
+          <form class="value-contribution" id="valueForm" autocomplete="off">
+            <label for="valueInput">¿Qué valor reconoces en esta persona?</label>
+            <div class="value-input-row">
+              <input id="valueInput" name="valor" type="text" maxlength="30" placeholder="Ej. EMPATÍA" />
+              <button id="valueSubmit" type="submit">Agregar</button>
+            </div>
+            <span class="value-form-note" id="valueFormNote">Se publica de inmediato.</span>
+          </form>
+
           <p class="detail-hint">Selecciona otra foto del mural para continuar.</p>
         </aside>
       </div>
@@ -2969,6 +3130,7 @@
     </div>
   </main>
 </div>
+<div class="value-toast" id="valueToast" role="status" aria-live="polite"></div>
 <script>
 (() => {
   const DATA = {"CENTRO": [{"name": "CLAUDIA NORATO", "photoStem": "CLAUDIA NORATO", "initials": "CN", "role": "Equipo CENTRO", "value": "Valores del equipo", "quote": "", "x": 20, "y": 61, "photo": null, "photoPosition": "center center", "rawOpinions": ["Noble", "Valiente", "Perseverancia", "Amable"]}, {"name": "YESID HERNANDEZ", "photoStem": "YESID HERNANDEZ", "initials": "YH", "role": "Equipo CENTRO", "value": "Valores del equipo", "quote": "", "x": 38, "y": 35, "photo": null, "photoPosition": "center center", "rawOpinions": ["Intrepido", "Solidario", "Perseverancia", "Juicioso"]}, {"name": "EDWIN GARAY", "photoStem": "EDWIN GARAY", "initials": "EG", "role": "Equipo CENTRO", "value": "Valores del equipo", "quote": "", "x": 57, "y": 56, "photo": null, "photoPosition": "center center", "rawOpinions": ["Resiliente", "Amistoso", "Guerrero", "Trabajador"]}, {"name": "YEFERSON CARDENAS", "photoStem": "YEFERSON CARDENAS", "initials": "YC", "role": "Equipo CENTRO", "value": "Valores del equipo", "quote": "", "x": 76, "y": 34, "photo": null, "photoPosition": "center center", "rawOpinions": ["Versatil", "Solidario", "Inteligente", "Responsable"]}], "NORTE": [{"name": "LEIDY SANDOVAL", "photoStem": "Leidy Sandoval", "initials": "LS", "role": "Equipo NORTE", "value": "Valores del equipo", "quote": "", "x": 20, "y": 61, "photo": null, "photoPosition": "center center", "rawOpinions": ["Humildad", "Dedicada", "Responsable", "Inteligente", "Perseverante", "Persistente"]}, {"name": "WENDY MARTINEZ", "photoStem": "Wendy Martinez", "initials": "WM", "role": "Equipo NORTE", "value": "Valores del equipo", "quote": "", "x": 38, "y": 35, "photo": null, "photoPosition": "center center", "rawOpinions": ["Responsabilidad", "Perseverante", "Amable", "Resiliente", "Integra", "Amorosa"]}, {"name": "LORENA FILOS", "photoStem": "Lorena Filos", "initials": "LF", "role": "Equipo NORTE", "value": "Valores del equipo", "quote": "", "x": 57, "y": 56, "photo": null, "photoPosition": "center center", "rawOpinions": ["Respeto", "Amistosa", "Respetuosa", "Amable", "Compromiso", "Responsable"]}, {"name": "JORGE BARRERA", "photoStem": "Jorge Barrera", "initials": "JB", "role": "Equipo NORTE", "value": "Valores del equipo", "quote": "", "x": 76, "y": 34, "photo": null, "photoPosition": "center center", "rawOpinions": ["Respeto", "Inteligencia", "Compromiso", "Entusiasta", "Transparencia", "Amistoso"]}, {"name": "JOHAN CASTELLANOS", "photoStem": "Johan Castellanos", "initials": "JC", "role": "Equipo NORTE", "value": "Valores del equipo", "quote": "", "x": 31, "y": 69, "photo": null, "photoPosition": "center center", "rawOpinions": ["Honestidad", "Fanatico", "solidario", "Paciente", "Generosidad", "Perseverante"]}, {"name": "JOHANA GUERRA", "photoStem": "Johana Guerra", "initials": "JG", "role": "Equipo NORTE", "value": "Valores del equipo", "quote": "", "x": 66, "y": 70, "photo": null, "photoPosition": "center center", "rawOpinions": ["Generosidad", "Sincero", "Valiente", "Constante", "Bondad", "Responsable"]}], "OCCIDENTE": [{"name": "LUCELLY RINCÓN", "photoStem": "LUCELLY RINCÓN", "initials": "LR", "role": "Equipo OCCIDENTE", "value": "Valores del equipo", "quote": "", "x": 20, "y": 61, "photo": null, "photoPosition": "center center", "rawOpinions": ["Responsabilidad", "Liderazgo", "Compromiso", "Resilencia", "Pasión", "Honestidad"]}, {"name": "JOSE VICENTE SIERRA", "photoStem": "JOSE VICENTE SIERRA", "initials": "JV", "role": "Equipo OCCIDENTE", "value": "Valores del equipo", "quote": "", "x": 38, "y": 35, "photo": null, "photoPosition": "center center", "rawOpinions": ["Generoso", "Respetuoso", "Compañerismo", "Honestidad", "Solidario", "Empatico"]}, {"name": "JESUS GELVES", "photoStem": "JESUS GELVES", "initials": "JG", "role": "Equipo OCCIDENTE", "value": "Valores del equipo", "quote": "", "x": 57, "y": 56, "photo": null, "photoPosition": "center center", "rawOpinions": ["Servicial", "Honestidad", "Solidario", "Compromiso", "Respetuoso", "Comprometido"]}, {"name": "HARVIN HURTADO", "photoStem": "HARVIN HURTADO", "initials": "HH", "role": "Equipo OCCIDENTE", "value": "Valores del equipo", "quote": "", "x": 76, "y": 34, "photo": null, "photoPosition": "center center", "rawOpinions": ["Humildad", "Respetuoso", "Honesto", "Organizado", "Disciplina", "Paciencia"]}, {"name": "MAURICIO OROZCO", "photoStem": "MAURICIO OROZCO", "initials": "MO", "role": "Equipo OCCIDENTE", "value": "Valores del equipo", "quote": "", "x": 31, "y": 69, "photo": null, "photoPosition": "center center", "rawOpinions": ["Respetuoso", "Organizado", "Leal", "Honesto", "Organizado", "Empatico"]}, {"name": "JHON JAIRO DUQUE", "photoStem": "JHON JAIRO DUQUE", "initials": "JJ", "role": "Equipo OCCIDENTE", "value": "Valores del equipo", "quote": "", "x": 66, "y": 70, "photo": null, "photoPosition": "center center", "rawOpinions": ["Lealtad", "Colaborativo", "Apasionado", "Solidario", "Entusiasta", "Gratitud"]}], "INDUSTRIA": [{"name": "JEISON MEJIA", "photoStem": "JEISON MEJIA", "initials": "JM", "role": "Equipo INDUSTRIA", "value": "Valores del equipo", "quote": "", "x": 20, "y": 61, "photo": null, "photoPosition": "center center", "rawOpinions": ["Empatia", "PERSEVERANCIA", "Compromiso", "Leal", "Autentico", "Comprometido con trabajo", "Disciplina"]}, {"name": "RUBEN FIGUEROA", "photoStem": "RUBEN FIGUEROA", "initials": "RF", "role": "Equipo INDUSTRIA", "value": "Valores del equipo", "quote": "", "x": 38, "y": 35, "photo": null, "photoPosition": "center center", "rawOpinions": ["Resiliencia", "HUMILDAD", "Solidaridad", "Servicial", "Amistoso", "Compañerismo", "Carismatico"]}, {"name": "ANA MARIA HERNANDEZ", "photoStem": "ANA MARIA HERNANDEZ", "initials": "AM", "role": "Equipo INDUSTRIA", "value": "Valores del equipo", "quote": "", "x": 57, "y": 56, "photo": null, "photoPosition": "center center", "rawOpinions": ["Perseverancia", "SOLIDARIDAD", "Respeto", "Amable", "Bondadosa", "Prudente", "Amigable"]}, {"name": "TEMISTOCLES ORTIZ", "photoStem": "TEMISTOCLES ORTIZ", "initials": "TO", "role": "Equipo INDUSTRIA", "value": "Valores del equipo", "quote": "", "x": 76, "y": 34, "photo": null, "photoPosition": "center center", "rawOpinions": ["Espiritualidad", "EMPATIA", "Respeto", "Positivo", "Respetuoso", "Responsable", "Amigable"]}, {"name": "JONATHAN OLAYA", "photoStem": "JONATHAN OLAYA", "initials": "JO", "role": "Equipo INDUSTRIA", "value": "Valores del equipo", "quote": "", "x": 31, "y": 69, "photo": null, "photoPosition": "center center", "rawOpinions": ["Honestidad", "RESPONSABILIDAD", "Responsabilidad", "Organizado", "Disciplinado", "Liderazgo", "Ordenado"]}, {"name": "NILSON HINCAPIE", "photoStem": "NILSON HINCAPIE", "initials": "NH", "role": "Equipo INDUSTRIA", "value": "Valores del equipo", "quote": "", "x": 66, "y": 70, "photo": null, "photoPosition": "center center", "rawOpinions": ["Responsable", "EMPATICO", "Honestidad", "Seguro", "Perseverante", "Compromiso", "Amigable"]}, {"name": "ANDRES ORTIZ", "photoStem": "ANDRES ORTIZ", "initials": "AO", "role": "Equipo INDUSTRIA", "value": "Valores del equipo", "quote": "", "x": 88, "y": 55, "photo": null, "photoPosition": "center center", "rawOpinions": ["Empatico", "LIDERAZGO", "Trabajo de equipo", "Disponibilidad", "Servicial", "Liderazgo", "Amigable"]}], "MEDELLÍN & NACIONAL": [{"name": "YAMILETH CARDONA", "photoStem": "YAMILETH CARDONA", "initials": "YC", "role": "Equipo MEDELLÍN & NACIONAL", "value": "Valores del equipo", "quote": "", "x": 20, "y": 61, "photo": null, "photoPosition": "center center", "rawOpinions": ["Carismatica", "Solidaria", "Lealtad", "Liderazgo", "Empatia"]}, {"name": "LINA GUTIERREZ", "photoStem": "LINA GUTIERREZ", "initials": "LG", "role": "Equipo MEDELLÍN & NACIONAL", "value": "Valores del equipo", "quote": "", "x": 38, "y": 35, "photo": null, "photoPosition": "center center", "rawOpinions": ["Honestidad", "Divertida", "Alegre", "Humilde", "Empatia"]}, {"name": "BRAYAN MUÑOZ", "photoStem": "BRAYAN MUÑOZ", "initials": "BM", "role": "Equipo MEDELLÍN & NACIONAL", "value": "Valores del equipo", "quote": "", "x": 57, "y": 56, "photo": null, "photoPosition": "center center", "rawOpinions": ["Alegria", "Amistoso", "Responsable", "Comprometido", "Lealtad"]}, {"name": "RICARDO FADUS", "photoStem": "RICARDO FADUS", "initials": "RF", "role": "Equipo MEDELLÍN & NACIONAL", "value": "Valores del equipo", "quote": "", "x": 76, "y": 34, "photo": null, "photoPosition": "center center", "rawOpinions": ["Generosidad", "Empatico", "Lealtad", "Comprometido", "Generoso"]}, {"name": "ESNEIDER BUSTAMANTE", "photoStem": "ESNEIDER BUSTAMANTE", "initials": "EB", "role": "Equipo MEDELLÍN & NACIONAL", "value": "Valores del equipo", "quote": "", "x": 31, "y": 69, "photo": null, "photoPosition": "center center", "rawOpinions": ["Respetuoso", "Trabajador", "Empatia", "Amistoso", "Carismatico"]}, {"name": "YEFERSON URIBE", "photoStem": "YEFERSON URIBE", "initials": "YU", "role": "Equipo MEDELLÍN & NACIONAL", "value": "Valores del equipo", "quote": "", "x": 66, "y": 70, "photo": null, "photoPosition": "center center", "rawOpinions": ["Servicial", "Responsable", "Leal", "Compañerismo", "Persistente"]}], "EXPORTACIONES": [{"name": "JUAN CAMILO MALAGÓN", "photoStem": "JUAN CAMILO MALAGÓN", "initials": "JC", "role": "Equipo EXPORTACIONES", "value": "Valores del equipo", "quote": "", "x": 20, "y": 61, "photo": null, "photoPosition": "center center", "rawOpinions": ["Perseverante", "Leal", "Compromiso", "Solidario", "Liderazgo"]}]};
@@ -2993,6 +3155,11 @@
   const csvToast = document.getElementById("csvToast");
   const opinionChips = document.getElementById("opinionChips");
   const opinionCount = document.getElementById("opinionCount");
+  const valueForm = document.getElementById("valueForm");
+  const valueInput = document.getElementById("valueInput");
+  const valueSubmit = document.getElementById("valueSubmit");
+  const valueFormNote = document.getElementById("valueFormNote");
+  const valueToast = document.getElementById("valueToast");
 
   let currentUne = "MEDELLÍN & NACIONAL";
   let selectedButton = null;
@@ -3341,6 +3508,154 @@
   }
 
 
+
+  const SUPABASE_URL = "https://tcercpnykhebjtgnldta.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_Wqoy2g0Kd2JlrXDGm2F1Zw_E7qURo6P";
+  let LIVE_VALUES = [];
+  let valueToastTimer = null;
+
+  function normalizeValueKey(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^A-Za-z0-9ÑñÁÉÍÓÚÜáéíóúü ]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toUpperCase();
+  }
+
+  function cleanValueInput(value) {
+    return String(value || "")
+      .replace(/[^\p{L}\p{N}\s-]/gu, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 30)
+      .toUpperCase();
+  }
+
+  function escapeHtml(value) {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function showValueToast(message) {
+    if (!valueToast) return;
+    valueToast.textContent = message;
+    valueToast.classList.add("show");
+    clearTimeout(valueToastTimer);
+    valueToastTimer = setTimeout(() => valueToast.classList.remove("show"), 2400);
+  }
+
+  function liveValuesForSeller(une, sellerName) {
+    const personKey = normalizePersonKey(sellerName);
+    return LIVE_VALUES.filter(row =>
+      row.une === une && normalizePersonKey(row.asesor_key || row.asesor) === personKey
+    );
+  }
+
+  function combinedValueCounts(une, seller) {
+    const all = [];
+    const base = Array.isArray(seller.rawOpinions) ? seller.rawOpinions : [];
+    base.forEach(value => all.push({ value:String(value || "").trim(), source:"base" }));
+
+    liveValuesForSeller(une, seller.name).forEach(row => {
+      all.push({ value:String(row.valor || "").trim(), source:"live" });
+    });
+
+    const map = new Map();
+    all.filter(item => item.value).forEach(item => {
+      const key = normalizeValueKey(item.value);
+      if (!key) return;
+
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          label:item.value.toUpperCase(),
+          count:0
+        });
+      }
+      map.get(key).count += 1;
+    });
+
+    return [...map.values()].sort((a,b) => b.count - a.count || a.label.localeCompare(b.label, "es"));
+  }
+
+  function totalOpinionCount(une, seller) {
+    return combinedValueCounts(une, seller).reduce((sum, item) => sum + item.count, 0);
+  }
+
+  async function loadLiveValues({rerender=true} = {}) {
+    try {
+      const response = await fetch(
+        SUPABASE_URL + "/rest/v1/mural_values?select=une,asesor,asesor_key,valor,valor_key,created_at&order=created_at.asc",
+        {
+          headers: {
+            apikey: SUPABASE_KEY
+          },
+          cache:"no-store"
+        }
+      );
+
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      LIVE_VALUES = await response.json();
+
+      if (rerender) {
+        renderSellers();
+        if (!isMobileExperience() && selectedSellerIndex >= 0 && DATA[currentUne][selectedSellerIndex]) {
+          setSellerContent(DATA[currentUne][selectedSellerIndex]);
+        }
+      }
+    } catch (error) {
+      console.warn("No se pudieron cargar valores colaborativos:", error);
+    }
+  }
+
+  async function submitLiveValue(une, seller, rawValue) {
+    const valor = cleanValueInput(rawValue);
+    if (!valor) throw new Error("Escribe un valor.");
+    if (valor.length > 30) throw new Error("Máximo 30 caracteres.");
+
+    const payload = {
+      une,
+      asesor: seller.name,
+      asesor_key: normalizePersonKey(seller.name),
+      valor,
+      valor_key: normalizeValueKey(valor)
+    };
+
+    const response = await fetch(SUPABASE_URL + "/rest/v1/mural_values", {
+      method:"POST",
+      headers:{
+        apikey:SUPABASE_KEY,
+        "Content-Type":"application/json",
+        Prefer:"return=representation"
+      },
+      body:JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const detail = await response.text().catch(() => "");
+      console.error("Error Supabase:", response.status, detail);
+      throw new Error("No pudimos guardar el valor.");
+    }
+
+    const rows = await response.json();
+    if (Array.isArray(rows) && rows[0]) LIVE_VALUES.push(rows[0]);
+
+    renderSellers();
+
+    if (!isMobileExperience() && selectedSellerIndex >= 0 && DATA[currentUne][selectedSellerIndex]) {
+      setSellerContent(DATA[currentUne][selectedSellerIndex]);
+    }
+
+    showValueToast("¡Gracias! Tu valor ya quedó publicado.");
+    return valor;
+  }
+
   const PHOTO_FOLDERS = {
     "CENTRO": ["UNE CENTRO"],
     "NORTE": ["UNE NORTE"],
@@ -3584,16 +3899,17 @@
       btn.className = "seller mobile-timeline-item" + (selectedSellerIndex === index ? " selected" : "");
       btn.setAttribute("aria-label", seller.name);
 
-      const opinions = Array.isArray(seller.rawOpinions)
-        ? seller.rawOpinions.filter(Boolean)
-        : [];
+      const groupedValues = combinedValueCounts(currentUne, seller);
+      const opinionTotal = groupedValues.reduce((sum, item) => sum + item.count, 0);
 
       const photoStyle = seller.photo
         ? `background-image:url('${seller.photo}'); --photo-position:${seller.photoPosition || "center center"};`
         : "";
 
-      const chips = opinions.length
-        ? opinions.map(value => `<span class="mobile-value-chip">${value}</span>`).join("")
+      const chips = groupedValues.length
+        ? groupedValues.map(item =>
+            `<span class="mobile-value-chip">${escapeHtml(item.label)}${item.count > 1 ? ` <strong>× ${item.count}</strong>` : ""}</span>`
+          ).join("")
         : '<span class="mobile-value-chip empty">VALORES PENDIENTES</span>';
 
       const isLeft = index % 2 === 0;
@@ -3615,9 +3931,13 @@
         <span class="mobile-values-panel">
           <span class="mobile-values-head">
             <span class="mobile-values-title">Valores que reconoce su equipo</span>
-            <span class="mobile-values-count">${opinions.length ? opinions.length + (opinions.length === 1 ? " opinión" : " opiniones") : ""}</span>
+            <span class="mobile-values-count">${opinionTotal ? opinionTotal + (opinionTotal === 1 ? " opinión" : " opiniones") : ""}</span>
           </span>
           <span class="mobile-values-chips">${chips}</span>
+          <span class="mobile-contribution">
+            <input class="mobile-value-input" maxlength="30" placeholder="¿Qué valor reconoces?" aria-label="Agregar valor para ${escapeHtml(seller.name)}" />
+            <button class="mobile-value-submit" type="button">Agregar</button>
+          </span>
         </span>
       `;
 
@@ -3639,6 +3959,35 @@
           });
         }, 30);
       });
+
+      const mobileInput = btn.querySelector(".mobile-value-input");
+      const mobileSubmit = btn.querySelector(".mobile-value-submit");
+
+      if (mobileInput && mobileSubmit) {
+        mobileInput.addEventListener("click", event => event.stopPropagation());
+        mobileInput.addEventListener("keydown", async event => {
+          event.stopPropagation();
+          if (event.key === "Enter") {
+            event.preventDefault();
+            mobileSubmit.click();
+          }
+        });
+
+        mobileSubmit.addEventListener("click", async event => {
+          event.stopPropagation();
+          if (mobileSubmit.disabled) return;
+
+          mobileSubmit.disabled = true;
+          try {
+            await submitLiveValue(currentUne, seller, mobileInput.value);
+            mobileInput.value = "";
+          } catch (error) {
+            showValueToast(error.message || "No pudimos guardar el valor.");
+          } finally {
+            mobileSubmit.disabled = false;
+          }
+        });
+      }
 
       sellerLayer.appendChild(btn);
     });
@@ -3692,29 +4041,40 @@
     detailName.textContent = seller.name;
     detailMeta.textContent = currentUne + " · " + seller.role;
 
-    const opinions = Array.isArray(seller.rawOpinions)
-      ? seller.rawOpinions.filter(Boolean)
-      : [];
+    const groupedValues = combinedValueCounts(currentUne, seller);
+    const opinionTotal = groupedValues.reduce((sum, item) => sum + item.count, 0);
 
     opinionChips.innerHTML = "";
-    opinionCount.textContent = opinions.length
-      ? `${opinions.length} opinión${opinions.length === 1 ? "" : "es"}`
+    opinionCount.textContent = opinionTotal
+      ? `${opinionTotal} opinión${opinionTotal === 1 ? "" : "es"}`
       : "";
 
-    if (!opinions.length) {
+    if (!groupedValues.length) {
       const empty = document.createElement("span");
       empty.className = "opinion-chip empty";
       empty.textContent = "VALORES PENDIENTES";
       opinionChips.appendChild(empty);
-      return;
+    } else {
+      groupedValues.forEach(item => {
+        const chip = document.createElement("span");
+        chip.className = "opinion-chip";
+        chip.append(document.createTextNode(item.label));
+
+        if (item.count > 1) {
+          const count = document.createElement("strong");
+          count.textContent = "× " + item.count;
+          chip.appendChild(count);
+        }
+
+        opinionChips.appendChild(chip);
+      });
     }
 
-    opinions.forEach(value => {
-      const chip = document.createElement("span");
-      chip.className = "opinion-chip";
-      chip.textContent = value;
-      opinionChips.appendChild(chip);
-    });
+    if (valueInput) {
+      valueInput.value = "";
+      valueInput.placeholder = "Ej. EMPATÍA";
+    }
+    if (valueFormNote) valueFormNote.textContent = "Se publica de inmediato.";
   }
 
 
@@ -3837,6 +4197,31 @@
   }
 
 
+
+  if (valueForm) {
+    valueForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      const seller = selectedSellerIndex >= 0 ? DATA[currentUne][selectedSellerIndex] : null;
+      if (!seller || valueSubmit.disabled) return;
+
+      valueSubmit.disabled = true;
+      if (valueFormNote) valueFormNote.textContent = "Guardando...";
+
+      try {
+        await submitLiveValue(currentUne, seller, valueInput.value);
+        valueInput.value = "";
+        if (valueFormNote) valueFormNote.textContent = "¡Publicado!";
+      } catch (error) {
+        if (valueFormNote) valueFormNote.textContent = error.message || "No pudimos guardar el valor.";
+      } finally {
+        valueSubmit.disabled = false;
+        setTimeout(() => {
+          if (valueFormNote) valueFormNote.textContent = "Se publica de inmediato.";
+        }, 1800);
+      }
+    });
+  }
+
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && detailPanel.classList.contains("open")) {
       closePanel();
@@ -3853,6 +4238,8 @@ renderTabs();
   renderSellers();
   resolveAllSellerPhotos();
   refreshSurveysFromRepository();
+  loadLiveValues({rerender:true});
+  setInterval(() => loadLiveValues({rerender:true}), 20000);
 })();
 </script>
 </body>
