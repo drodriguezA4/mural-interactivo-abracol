@@ -3894,9 +3894,10 @@
     threadNetwork.innerHTML = "";
 
     sellers.forEach((seller, index) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
+      const btn = document.createElement("div");
       btn.className = "seller mobile-timeline-item" + (selectedSellerIndex === index ? " selected" : "");
+      btn.setAttribute("role", "button");
+      btn.setAttribute("tabindex", "0");
       btn.setAttribute("aria-label", seller.name);
 
       const groupedValues = combinedValueCounts(currentUne, seller);
@@ -3941,7 +3942,7 @@
         </span>
       `;
 
-      btn.addEventListener("click", () => {
+      const selectMobileSeller = () => {
         if (selectedSellerIndex === index) return;
 
         selectedSellerIndex = index;
@@ -3958,6 +3959,15 @@
             inline:"nearest"
           });
         }, 30);
+      };
+
+      btn.addEventListener("click", selectMobileSeller);
+      btn.addEventListener("keydown", event => {
+        if (event.target.closest("input,button")) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          selectMobileSeller();
+        }
       });
 
       const mobileInput = btn.querySelector(".mobile-value-input");
@@ -3974,6 +3984,7 @@
         });
 
         mobileSubmit.addEventListener("click", async event => {
+          event.preventDefault();
           event.stopPropagation();
           if (mobileSubmit.disabled) return;
 
