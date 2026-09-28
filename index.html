@@ -2868,6 +2868,40 @@
     }
   }
 
+
+  /* =========================================================
+     MOBILE PATCH · espacio inferior para seguir recorriendo nodos
+     ========================================================= */
+  @media (max-width: 700px) {
+    .mural-viewport {
+      min-height: var(--mobile-stage-height, 980px) !important;
+      height: var(--mobile-stage-height, 980px) !important;
+      overflow: visible !important;
+    }
+
+    .stage-card {
+      overflow: visible !important;
+      margin-bottom: 8px !important;
+    }
+
+    .seller-layer,
+    .thread-network,
+    .mural-scene,
+    .ambient-vignette,
+    .transition-wash {
+      border-radius: 22px !important;
+    }
+
+    /* La ficha sigue flotante, pero deja una franja clara para poder
+       deslizar la página por detrás y alcanzar los nodos inferiores. */
+    .detail-panel,
+    .detail-panel.panel-left,
+    .detail-panel.panel-right {
+      max-height: 42vh !important;
+      bottom: 8px !important;
+    }
+  }
+
 </style>
 </head>
 <body>
@@ -3471,15 +3505,17 @@
 
   function mobileStageHeight(count) {
     const safe = Math.max(1, Number(count) || 1);
-    return Math.max(760, 210 + safe * 122);
+    // Altura útil para nodos + espacio extra al final para que el último
+    // pueda desplazarse por encima de la ficha flotante.
+    return Math.max(980, 260 + safe * 145 + 360);
   }
 
   function displaySellersForCurrentViewport(sellers) {
     if (!isMobileExperience()) return sellers.map(s => ({...s}));
 
     const count = sellers.length;
-    const top = 13;
-    const bottom = 86;
+    const top = 10;
+    const bottom = 72;
     const span = Math.max(1, count - 1);
 
     return sellers.map((seller, index) => ({
@@ -3718,6 +3754,14 @@
       focusCameraOn(button);
       setSellerContent(seller);
 
+      if (isMobileExperience()) {
+        setTimeout(() => {
+          const rect = button.getBoundingClientRect();
+          const targetY = window.scrollY + rect.top - Math.max(110, window.innerHeight * 0.18);
+          window.scrollTo({ top: Math.max(0, targetY), behavior: "smooth" });
+        }, 140);
+      }
+
       viewport.classList.add("focused");
       detailPanel.setAttribute("aria-hidden", "false");
 
@@ -3749,6 +3793,14 @@
       selectedButton.classList.add("selected");
 
       setSellerContent(seller);
+
+      if (isMobileExperience()) {
+        setTimeout(() => {
+          const rect = button.getBoundingClientRect();
+          const targetY = window.scrollY + rect.top - Math.max(110, window.innerHeight * 0.18);
+          window.scrollTo({ top: Math.max(0, targetY), behavior: "smooth" });
+        }, 120);
+      }
 
       // Pequeña pausa para que el cambio de contenido no se perciba brusco.
       requestAnimationFrame(() => {
