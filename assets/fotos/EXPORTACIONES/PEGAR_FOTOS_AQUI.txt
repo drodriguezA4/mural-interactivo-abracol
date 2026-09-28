@@ -1,0 +1,2 @@
+Pega aquí las fotos de esta carpeta conservando el nombre original del asesor.
+Se admiten JPG, JPEG, PNG y WEBP.

@@ -1,0 +1,2933 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mural Interactivo ABRACOL</title>
+<style>
+  :root {
+    --ink: #15252a;
+    --muted: #60747b;
+    --paper: #f6f4ef;
+    --card: rgba(255,255,255,.94);
+    --line: rgba(21,37,42,.14);
+    --teal: #0f9d9a;
+    --teal-2: #38b9b0;
+    --orange: #ef8a34;
+    --shadow: 0 20px 60px rgba(20, 37, 42, .18);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin:0; min-height:100%; background:var(--paper); color:var(--ink); font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+  body { padding: 0; }
+
+  .app-shell {
+    width: 100%;
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at 10% 0%, rgba(15,157,154,.08), transparent 24rem),
+      radial-gradient(circle at 90% 0%, rgba(239,138,52,.09), transparent 24rem),
+      var(--paper);
+  }
+
+  .topbar {
+    display:flex; align-items:center; justify-content:space-between; gap:24px;
+    padding: 22px clamp(18px, 4vw, 52px);
+    border-bottom:1px solid rgba(21,37,42,.08);
+    background:rgba(246,244,239,.88);
+    backdrop-filter: blur(12px);
+    position: static;
+    z-index:1;
+  }
+  .brand-wrap { display:flex; align-items:center; gap:14px; min-width:0; }
+  .brand-mark {
+    width:44px; height:44px; border-radius:14px; display:grid; place-items:center;
+    background: linear-gradient(135deg, var(--teal), #0a7270);
+    color:#fff; font-weight:900; letter-spacing:-.04em;
+    box-shadow:0 8px 22px rgba(15,157,154,.26);
+    flex:0 0 auto;
+  }
+  .brand-copy h1 { margin:0; font-size:clamp(18px,2.2vw,26px); line-height:1.05; letter-spacing:-.025em; }
+  .brand-copy p { margin:5px 0 0; font-size:13px; color:var(--muted); }
+
+  .folder-loader {
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  }
+  .folder-btn {
+    appearance:none; border:1px solid var(--line); background:#fff; color:var(--ink);
+    padding:10px 14px; border-radius:999px; font:inherit; font-size:12px; font-weight:850;
+    cursor:pointer; transition:.25s ease;
+  }
+  .folder-btn:hover { transform:translateY(-1px); border-color:rgba(15,157,154,.42); }
+  .folder-status {
+    font-size:11px; color:var(--muted); max-width:360px; line-height:1.35;
+  }
+
+  .top-pill {
+    padding:9px 13px; border-radius:999px; border:1px solid var(--line); background:#fff;
+    font-size:12px; font-weight:800; color:#345058; white-space:nowrap;
+  }
+
+  main { padding: 28px clamp(14px, 3vw, 42px) 44px; }
+  .intro {
+    max-width: 1440px; margin:0 auto 18px;
+    display:flex; justify-content:space-between; gap:20px; align-items:end; flex-wrap:wrap;
+  }
+  .intro .eyebrow { font-size:12px; font-weight:900; letter-spacing:.16em; text-transform:uppercase; color:var(--teal); }
+  .intro h2 { margin:6px 0 0; font-size:clamp(26px,4.4vw,54px); line-height:.98; letter-spacing:-.05em; max-width:850px; }
+  .intro p { margin:8px 0 0; color:var(--muted); max-width:760px; font-size:14px; line-height:1.55; }
+
+  .tabs-wrap {
+    max-width:1440px; margin:0 auto 16px;
+    display:flex; gap:8px; overflow-x:auto; padding:4px 2px 8px;
+    scrollbar-width:thin;
+  }
+  .tab {
+    appearance:none; border:1px solid var(--line); background:#fff; color:#334e56;
+    border-radius:999px; padding:11px 16px; font:inherit; font-size:13px; font-weight:850;
+    cursor:pointer; white-space:nowrap; transition:.2s ease;
+  }
+  .tab:hover { transform:translateY(-1px); border-color:rgba(15,157,154,.42); }
+  .tab.active {
+    background:var(--ink); color:#fff; border-color:var(--ink);
+    box-shadow:0 8px 20px rgba(21,37,42,.18);
+  }
+
+  .stage-card {
+    max-width:1440px; margin:0 auto;
+    position:relative; overflow:hidden; border-radius:26px;
+    background:#131f23; box-shadow:var(--shadow);
+    border:1px solid rgba(255,255,255,.25);
+  }
+
+  .mural-viewport {
+    position:relative;
+    width:100%;
+    aspect-ratio: 2048 / 672;
+    overflow:hidden;
+    background:#102126;
+    isolation:isolate;
+  }
+
+  .mural-scene {
+    position:absolute; inset:0;
+    background-image:
+      linear-gradient(to bottom, rgba(4,13,17,.08), rgba(4,13,17,.18)),
+      url("./assets/mural/mural.jpg");
+    background-size:cover;
+    background-position:center center;
+    transform-origin:50% 50%;
+    transition:
+      transform 2.8s cubic-bezier(.16,1,.3,1),
+      transform-origin 2.15s cubic-bezier(.16,1,.3,1),
+      filter 1.65s cubic-bezier(.22,1,.36,1),
+      opacity .9s ease;
+    will-change: transform;
+  }
+
+  .mural-viewport.focused .mural-scene {
+    transform: scale(1.58);
+    filter: saturate(.96) brightness(.84);
+  }
+
+  .ambient-vignette {
+    position:absolute; inset:0; pointer-events:none;
+    background: radial-gradient(circle at center, transparent 40%, rgba(0,0,0,.2) 100%);
+    z-index:1;
+  }
+
+  .une-badge {
+    position:absolute; left:20px; top:18px; z-index:8;
+    display:flex; align-items:center; gap:10px; padding:10px 13px;
+    background:rgba(16,31,35,.76); color:#fff; border:1px solid rgba(255,255,255,.2);
+    border-radius:999px; backdrop-filter:blur(10px);
+    font-size:12px; font-weight:850;
+  }
+  .une-dot { width:8px; height:8px; background:var(--orange); border-radius:50%; box-shadow:0 0 0 4px rgba(239,138,52,.18); }
+
+  .help-chip {
+    position:absolute; right:18px; top:18px; z-index:8;
+    max-width:min(410px, 66%);
+    background:rgba(255,255,255,.91); color:#20393f; border-radius:16px;
+    padding:10px 13px; border:1px solid rgba(255,255,255,.72);
+    backdrop-filter:blur(10px); font-size:12px; font-weight:750;
+  }
+
+  .seller-layer { position:absolute; inset:0; z-index:5; }
+
+  .seller {
+    position:absolute; transform:translate(-50%, -50%);
+    border:0; background:transparent; padding:0; cursor:pointer;
+    width:clamp(68px, 7.2vw, 100px); height:clamp(68px, 7.2vw, 100px);
+    border-radius:50%;
+    transition:
+      transform .65s cubic-bezier(.22,1,.36,1),
+      opacity .9s cubic-bezier(.22,1,.36,1),
+      filter .8s ease;
+  }
+  .seller:hover { transform:translate(-50%, -50%) scale(1.08); }
+  .seller:focus-visible { outline:4px solid #fff; outline-offset:4px; }
+  .seller .ring {
+    position:absolute; inset:0; border-radius:50%;
+    background:conic-gradient(from 20deg, #fff, #fff 72%, var(--orange) 72%, var(--orange));
+    box-shadow:0 8px 24px rgba(0,0,0,.28), 0 0 0 4px rgba(255,255,255,.18);
+  }
+  .seller .avatar {
+    position:absolute; inset:6px; border-radius:50%; display:grid; place-items:center;
+    background:linear-gradient(145deg,#1e4650,#0d7880 55%,#19aaa7);
+    color:#fff; font-weight:950; font-size:clamp(18px,2.4vw,28px); letter-spacing:-.05em;
+    border:2px solid rgba(255,255,255,.72);
+    overflow:hidden;
+    background-size:cover;
+    background-position:var(--photo-position, center center);
+    background-repeat:no-repeat;
+  }
+  .seller.has-photo .avatar {
+    color:transparent;
+  }
+  .seller.has-photo .avatar span {
+    display:none;
+  }
+  .seller .label {
+    position:absolute; left:50%; top:calc(100% + 7px); transform:translateX(-50%);
+    background:rgba(10,23,27,.84); color:#fff; padding:5px 8px; border-radius:999px;
+    white-space:nowrap; font-size:10px; font-weight:850; pointer-events:none;
+    opacity:.92;
+  }
+  .seller .pulse {
+    position:absolute; inset:-7px; border:2px solid rgba(255,255,255,.66); border-radius:50%;
+    animation:pulse 2.3s infinite;
+  }
+  @keyframes pulse {
+    0% { transform:scale(.92); opacity:.75; }
+    75%,100% { transform:scale(1.24); opacity:0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .seller .pulse { animation:none; }
+    .mural-scene { transition:none; }
+  }
+
+  .mural-viewport.focused .seller {
+    opacity:.28;
+  }
+  .mural-viewport.focused .seller.selected {
+    opacity:1;
+    transform:translate(-50%, -50%) scale(1.16);
+    z-index:10;
+  }
+
+  .detail-panel {
+    position:absolute; z-index:20; right:18px; bottom:18px;
+    width:min(410px, calc(100% - 36px));
+    border-radius:22px; background:var(--card);
+    border:1px solid rgba(255,255,255,.85); box-shadow:0 20px 50px rgba(0,0,0,.26);
+    padding:18px;
+    transform:translateY(28px) scale(.985); opacity:0; pointer-events:none;
+    transition:
+      transform 1s cubic-bezier(.22,1,.36,1),
+      opacity .82s cubic-bezier(.22,1,.36,1);
+    backdrop-filter:blur(12px);
+  }
+  .detail-panel.open { transform:translateY(0) scale(1); opacity:1; pointer-events:auto; }
+  .detail-top { display:flex; gap:16px; align-items:center; min-height:108px; }
+  .detail-avatar {
+    width:108px; height:108px; border-radius:50%; display:grid; place-items:center;
+    background:linear-gradient(145deg,#1e4650,#0d7880 55%,#19aaa7); color:#fff;
+    font-size:28px; font-weight:950; border:4px solid #fff;
+    box-shadow:0 10px 28px rgba(14,97,99,.22);
+    flex:0 0 auto;
+    overflow:hidden;
+    background-size:cover;
+    background-position:center center;
+    background-repeat:no-repeat;
+  }
+  .detail-name { margin:0; font-size:20px; line-height:1.05; letter-spacing:-.03em; }
+  .detail-meta { margin:5px 0 0; font-size:12px; color:var(--muted); font-weight:750; }
+
+  .detail-panel.switching-seller {
+    opacity:0;
+    transform:translateY(8px) scale(.992);
+    transition:
+      transform .46s cubic-bezier(.4,0,.2,1),
+      opacity .38s ease;
+  }
+
+  .mural-viewport.changing-seller .seller:not(.selected) {
+    opacity:.16;
+  }
+
+  .mural-viewport.changing-seller .seller.selected {
+    opacity:1;
+  }
+
+  .seller {
+    will-change: transform, opacity;
+  }
+
+  .value-box {
+    margin-top:16px; padding:14px; border-radius:18px;
+    background:linear-gradient(135deg, rgba(15,157,154,.12), rgba(239,138,52,.12));
+    border:1px solid rgba(15,157,154,.16);
+  }
+  .value-box small { display:block; color:#527078; font-size:10px; font-weight:950; letter-spacing:.14em; text-transform:uppercase; }
+  .value-box strong { display:block; margin-top:4px; font-size:26px; line-height:1; letter-spacing:-.04em; }
+  .detail-quote { margin:13px 0 0; color:#415e66; font-size:13px; line-height:1.5; }
+  .detail-actions { display:flex; justify-content:flex-end; margin-top:14px; }
+  .close-btn {
+    border:0; border-radius:12px; padding:10px 13px; background:var(--ink); color:#fff;
+    font-weight:850; cursor:pointer;
+  }
+
+
+  .transition-wash {
+    position:absolute;
+    inset:-8%;
+    z-index:14;
+    pointer-events:none;
+    opacity:0;
+    transform:translateX(-115%) skewX(-10deg);
+    background:
+      linear-gradient(
+        100deg,
+        transparent 0%,
+        rgba(255,255,255,.08) 28%,
+        rgba(255,255,255,.78) 49%,
+        rgba(246,244,239,.44) 58%,
+        transparent 78%
+      );
+    filter:blur(3px);
+  }
+
+  .mural-viewport.switching .transition-wash {
+    animation:muralSweep 1.45s cubic-bezier(.22,1,.36,1) both;
+  }
+
+  @keyframes muralSweep {
+    0%   { opacity:0; transform:translateX(-115%) skewX(-10deg); }
+    18%  { opacity:.78; }
+    55%  { opacity:.98; }
+    100% { opacity:0; transform:translateX(115%) skewX(-10deg); }
+  }
+
+  .seller-layer,
+  .une-badge,
+  .help-chip {
+    transition:
+      opacity .72s cubic-bezier(.22,1,.36,1),
+      transform .82s cubic-bezier(.22,1,.36,1),
+      filter .72s ease;
+  }
+
+  .mural-viewport.switching-out .seller-layer {
+    opacity:0;
+    transform:translateX(-28px);
+    filter:blur(4px);
+  }
+
+  .mural-viewport.switching-out .une-badge,
+  .mural-viewport.switching-out .help-chip {
+    opacity:0;
+    transform:translateX(-16px);
+    filter:blur(2px);
+  }
+
+  .mural-viewport.switching-in .seller-layer {
+    opacity:0;
+    transform:translateX(28px);
+    filter:blur(4px);
+  }
+
+  .mural-viewport.switching-in .une-badge,
+  .mural-viewport.switching-in .help-chip {
+    opacity:0;
+    transform:translateX(16px);
+    filter:blur(2px);
+  }
+
+  .seller.entering {
+    animation:sellerReveal .72s cubic-bezier(.22,1,.36,1) both;
+    animation-delay:calc(var(--i, 0) * 90ms);
+  }
+
+  @keyframes sellerReveal {
+    from { opacity:0; transform:translate(-50%, -42%) scale(.9); filter:blur(3px); }
+    to   { opacity:1; transform:translate(-50%, -50%) scale(1); filter:blur(0); }
+  }
+
+  .footer-row {
+    max-width:1440px; margin:16px auto 0;
+    display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap;
+    color:var(--muted); font-size:12px;
+  }
+  .status { display:flex; gap:8px; align-items:center; }
+  .status b { color:var(--ink); }
+
+  @media (max-width: 760px) {
+    .topbar { padding:14px 16px; }
+  
+  .folder-loader {
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  }
+  .folder-btn {
+    appearance:none; border:1px solid var(--line); background:#fff; color:var(--ink);
+    padding:10px 14px; border-radius:999px; font:inherit; font-size:12px; font-weight:850;
+    cursor:pointer; transition:.25s ease;
+  }
+  .folder-btn:hover { transform:translateY(-1px); border-color:rgba(15,157,154,.42); }
+  .folder-status {
+    font-size:11px; color:var(--muted); max-width:360px; line-height:1.35;
+  }
+
+  .top-pill { display:none; }
+    main { padding-top:18px; }
+    .intro h2 { font-size:34px; }
+
+    /* En móvil damos más altura, pero nunca estiramos la imagen. */
+    .mural-viewport { aspect-ratio:16 / 10; }
+    .mural-scene {
+      background-size:cover;
+      background-position:center;
+    }
+
+    .help-chip { left:16px; right:16px; top:auto; bottom:16px; max-width:none; }
+    .detail-panel { left:14px; right:14px; bottom:14px; width:auto; }
+    .mural-viewport.focused .mural-scene { transform:scale(1.72); }
+    .seller .label { font-size:9px; }
+  }
+
+  /* =========================
+     V11 · RESPONSIVE REAL
+     Optimizado para trabajar al 100% de zoom del navegador
+     ========================= */
+
+  html, body {
+    width:100%;
+    max-width:100%;
+    overflow-x:hidden;
+  }
+
+  .topbar {
+    display:grid;
+    grid-template-columns:minmax(0, 1fr) auto;
+    align-items:center;
+    gap:16px;
+    padding:14px clamp(16px, 2vw, 30px);
+  }
+
+  .brand-mark {
+    width:40px;
+    height:40px;
+    border-radius:12px;
+  }
+
+  .brand-copy h1 {
+    font-size:clamp(18px, 1.8vw, 24px);
+  }
+
+  .brand-copy p {
+    margin-top:3px;
+    font-size:12px;
+  }
+
+  .folder-loader {
+    justify-content:flex-end;
+    flex-wrap:nowrap;
+    min-width:0;
+  }
+
+  .folder-btn {
+    padding:9px 13px;
+    flex:0 0 auto;
+  }
+
+  .folder-status {
+    max-width:min(30vw, 360px);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  main {
+    padding:18px clamp(12px, 2vw, 26px) 28px;
+  }
+
+  .intro,
+  .tabs-wrap,
+  .stage-card,
+  .footer-row {
+    max-width:1280px;
+  }
+
+  .intro {
+    margin-bottom:10px;
+  }
+
+  .intro h2 {
+    font-size:clamp(25px, 3.25vw, 44px);
+    max-width:760px;
+  }
+
+  .intro p {
+    margin-top:6px;
+    font-size:13px;
+    line-height:1.4;
+  }
+
+  .tabs-wrap {
+    gap:6px;
+    margin-bottom:12px;
+    padding-bottom:5px;
+  }
+
+  .tab {
+    padding:9px 13px;
+    font-size:12px;
+  }
+
+  .stage-card {
+    width:100%;
+    container-type:inline-size;
+  }
+
+  .mural-viewport {
+    width:100%;
+    aspect-ratio:2048 / 672;
+  }
+
+  .une-badge {
+    left:14px;
+    top:14px;
+    padding:8px 11px;
+    font-size:11px;
+  }
+
+  .help-chip {
+    right:14px;
+    top:14px;
+    max-width:min(380px, 50%);
+    padding:8px 11px;
+    font-size:11px;
+  }
+
+  .seller {
+    width:clamp(56px, 6cqw, 82px);
+    height:clamp(56px, 6cqw, 82px);
+  }
+
+  .seller .avatar {
+    inset:5px;
+  }
+
+  .seller .label {
+    top:calc(100% + 5px);
+    padding:4px 7px;
+    font-size:clamp(8px, .78cqw, 10px);
+    max-width:150px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .mural-viewport.focused .seller.selected {
+    transform:translate(-50%, -50%) scale(1.10);
+  }
+
+  .detail-panel {
+    right:14px;
+    bottom:14px;
+    width:clamp(300px, 31%, 380px);
+    padding:clamp(12px, 1.25cqw, 16px);
+    border-radius:20px;
+  }
+
+  .detail-top {
+    gap:12px;
+    min-height:84px;
+  }
+
+  .detail-avatar {
+    width:clamp(72px, 7.2cqw, 90px);
+    height:clamp(72px, 7.2cqw, 90px);
+    border-width:3px;
+  }
+
+  .detail-name {
+    font-size:clamp(17px, 1.65cqw, 20px);
+  }
+
+  .detail-meta {
+    margin-top:4px;
+    font-size:11px;
+  }
+
+  .value-box {
+    margin-top:12px;
+    padding:11px 12px;
+    border-radius:15px;
+  }
+
+  .value-box small {
+    font-size:9px;
+  }
+
+  .value-box strong {
+    font-size:clamp(20px, 2cqw, 24px);
+    line-height:1.05;
+  }
+
+  .detail-quote {
+    margin-top:10px;
+    font-size:12px;
+    line-height:1.38;
+  }
+
+
+  .seller-nav {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin-top:12px;
+  }
+
+  .seller-nav-btn {
+    appearance:none;
+    border:1px solid var(--line);
+    background:#fff;
+    color:var(--ink);
+    border-radius:12px;
+    min-height:42px;
+    padding:9px 11px;
+    font:inherit;
+    font-size:12px;
+    font-weight:850;
+    cursor:pointer;
+    transition:
+      transform .22s ease,
+      border-color .22s ease,
+      background .22s ease;
+  }
+
+  .seller-nav-btn:hover {
+    transform:translateY(-1px);
+    border-color:rgba(15,157,154,.42);
+    background:rgba(15,157,154,.05);
+  }
+
+  .seller-nav-btn:focus-visible {
+    outline:3px solid rgba(15,157,154,.28);
+    outline-offset:2px;
+  }
+
+  .seller-nav-btn:disabled {
+    opacity:.42;
+    cursor:not-allowed;
+    transform:none;
+  }
+
+  .seller-nav-btn span {
+    display:block;
+    font-size:9px;
+    font-weight:700;
+    color:var(--muted);
+    margin-top:2px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  .detail-actions {
+    margin-top:10px;
+  }
+
+  .close-btn {
+    padding:9px 11px;
+    font-size:12px;
+  }
+
+  .footer-row {
+    margin-top:10px;
+  }
+
+  /* Laptop / escritorio angosto: evita que todo parezca sobredimensionado. */
+  @media (max-width: 1180px) and (min-width: 901px) {
+    .topbar {
+      padding:12px 18px;
+    }
+
+    .folder-status {
+      max-width:240px;
+    }
+
+    main {
+      padding:14px 16px 24px;
+    }
+
+    .intro h2 {
+      font-size:32px;
+    }
+
+    .intro p {
+      font-size:12px;
+    }
+
+    .tab {
+      padding:8px 11px;
+      font-size:11px;
+    }
+
+    .seller {
+      width:clamp(54px, 6.1cqw, 72px);
+      height:clamp(54px, 6.1cqw, 72px);
+    }
+
+    .detail-panel {
+      width:clamp(285px, 32%, 340px);
+      right:10px;
+      bottom:10px;
+      padding:12px;
+    }
+
+    .detail-avatar {
+      width:72px;
+      height:72px;
+    }
+
+    .detail-top {
+      min-height:72px;
+    }
+
+    .detail-name {
+      font-size:17px;
+    }
+
+    .value-box {
+      margin-top:9px;
+      padding:9px 10px;
+    }
+
+    .value-box strong {
+      font-size:20px;
+    }
+
+    .detail-quote {
+      margin-top:8px;
+      font-size:11px;
+      line-height:1.32;
+    }
+
+  
+  .seller-nav {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin-top:12px;
+  }
+
+  .seller-nav-btn {
+    appearance:none;
+    border:1px solid var(--line);
+    background:#fff;
+    color:var(--ink);
+    border-radius:12px;
+    min-height:42px;
+    padding:9px 11px;
+    font:inherit;
+    font-size:12px;
+    font-weight:850;
+    cursor:pointer;
+    transition:
+      transform .22s ease,
+      border-color .22s ease,
+      background .22s ease;
+  }
+
+  .seller-nav-btn:hover {
+    transform:translateY(-1px);
+    border-color:rgba(15,157,154,.42);
+    background:rgba(15,157,154,.05);
+  }
+
+  .seller-nav-btn:focus-visible {
+    outline:3px solid rgba(15,157,154,.28);
+    outline-offset:2px;
+  }
+
+  .seller-nav-btn:disabled {
+    opacity:.42;
+    cursor:not-allowed;
+    transform:none;
+  }
+
+  .seller-nav-btn span {
+    display:block;
+    font-size:9px;
+    font-weight:700;
+    color:var(--muted);
+    margin-top:2px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  .detail-actions {
+      margin-top:8px;
+    }
+
+    .close-btn {
+      padding:8px 10px;
+    }
+  }
+
+  /* Tablet: la ficha pasa a ser una bandeja inferior para no tapar todo el mural. */
+  @media (max-width: 900px) {
+    .topbar {
+      grid-template-columns:1fr;
+      gap:10px;
+    }
+
+    .folder-loader {
+      justify-content:flex-start;
+      flex-wrap:wrap;
+    }
+
+    .folder-status {
+      max-width:100%;
+      white-space:normal;
+    }
+
+    .top-pill {
+      display:none;
+    }
+
+    .intro h2 {
+      font-size:clamp(28px, 6vw, 38px);
+    }
+
+    .tabs-wrap {
+      margin-right:-12px;
+      padding-right:12px;
+    }
+
+    .mural-viewport {
+      aspect-ratio:16 / 8.6;
+      min-height:420px;
+    }
+
+    .mural-scene {
+      background-size:cover;
+      background-position:center center;
+    }
+
+    .seller {
+      width:clamp(58px, 9cqw, 76px);
+      height:clamp(58px, 9cqw, 76px);
+    }
+
+    .detail-panel {
+      left:12px;
+      right:12px;
+      bottom:12px;
+      width:auto;
+      padding:12px 14px;
+    }
+
+    .detail-top {
+      min-height:68px;
+    }
+
+    .detail-avatar {
+      width:68px;
+      height:68px;
+    }
+
+    .value-box {
+      margin-top:9px;
+    }
+
+    .mural-viewport.focused .help-chip {
+      opacity:0;
+      pointer-events:none;
+    }
+  }
+
+  /* Móvil: apilado y táctil, sin scroll horizontal de página. */
+  @media (max-width: 640px) {
+    .topbar {
+      padding:12px;
+    }
+
+    .brand-copy h1 {
+      font-size:20px;
+    }
+
+    .folder-btn {
+      width:100%;
+      min-height:44px;
+    }
+
+    .folder-status {
+      font-size:10px;
+    }
+
+    main {
+      padding:12px 10px 22px;
+    }
+
+    .intro {
+      margin-bottom:8px;
+    }
+
+    .intro .eyebrow {
+      font-size:10px;
+    }
+
+    .intro h2 {
+      font-size:29px;
+    }
+
+    .intro p {
+      font-size:12px;
+    }
+
+    .tabs-wrap {
+      gap:6px;
+      margin-left:0;
+      margin-right:-10px;
+      padding-right:10px;
+    }
+
+    .tab {
+      min-height:42px;
+      padding:8px 12px;
+      font-size:11px;
+    }
+
+    .stage-card {
+      border-radius:18px;
+    }
+
+    .mural-viewport {
+      aspect-ratio:auto;
+      min-height:560px;
+    }
+
+    .une-badge {
+      left:10px;
+      top:10px;
+      font-size:10px;
+    }
+
+    .help-chip {
+      left:10px;
+      right:10px;
+      top:auto;
+      bottom:10px;
+      max-width:none;
+      font-size:10px;
+    }
+
+    .seller {
+      width:62px;
+      height:62px;
+    }
+
+    .seller .label {
+      max-width:108px;
+      font-size:8px;
+    }
+
+    .detail-panel {
+      left:10px;
+      right:10px;
+      bottom:10px;
+      width:auto;
+      border-radius:17px;
+      padding:12px;
+    }
+
+    .detail-top {
+      align-items:center;
+      min-height:62px;
+    }
+
+    .detail-avatar {
+      width:62px;
+      height:62px;
+    }
+
+    .detail-name {
+      font-size:16px;
+    }
+
+    .detail-meta {
+      font-size:10px;
+    }
+
+    .value-box strong {
+      font-size:19px;
+    }
+
+    .detail-quote {
+      font-size:11px;
+    }
+
+    .seller-nav {
+      gap:6px;
+    }
+
+    .seller-nav-btn {
+      min-height:44px;
+      padding:8px;
+      font-size:11px;
+    }
+
+    .seller-nav-btn span {
+      font-size:8px;
+    }
+
+    .close-btn {
+      min-height:42px;
+    }
+
+    .mural-viewport.focused .mural-scene {
+      transform:scale(1.48);
+    }
+
+    .footer-row {
+      font-size:10px;
+    }
+  }
+
+  /* Pantallas muy pequeñas. */
+  @media (max-width: 390px) {
+    .mural-viewport {
+      min-height:600px;
+    }
+
+    .detail-panel {
+      padding:10px;
+    }
+
+    .detail-avatar {
+      width:56px;
+      height:56px;
+    }
+
+    .detail-top {
+      gap:9px;
+    }
+
+    .value-box {
+      padding:9px;
+    }
+  }
+
+
+  /* =========================
+     V13 · LOOK MINIMALISTA
+     Ajustes visuales de la ficha y navegación entre asesores
+     ========================= */
+  .detail-panel {
+    background: rgba(255,255,255,.96);
+    border: 1px solid rgba(21,37,42,.08);
+    box-shadow: 0 18px 44px rgba(21,37,42,.12);
+    border-radius: 24px;
+    padding: 18px;
+  }
+
+  .detail-top {
+    gap: 14px;
+    align-items: center;
+  }
+
+  .detail-avatar {
+    border-width: 3px;
+    box-shadow: 0 8px 20px rgba(21,37,42,.10);
+  }
+
+  .detail-name {
+    font-weight: 850;
+    letter-spacing: -.03em;
+    line-height: 1.02;
+  }
+
+  .detail-meta {
+    color: #63777e;
+    font-weight: 700;
+  }
+
+  .value-box {
+    background: linear-gradient(180deg, rgba(249,247,241,.96), rgba(245,243,236,.94));
+    border: 1px solid rgba(34,92,98,.14);
+    border-radius: 20px;
+    padding: 13px 15px;
+  }
+
+  .value-box small {
+    color: #59717a;
+    font-weight: 900;
+    letter-spacing: .16em;
+  }
+
+  .value-box strong {
+    font-size: clamp(18px, 1.9cqw, 22px);
+    line-height: 1.08;
+    font-weight: 900;
+    color: #1d2f35;
+  }
+
+  .detail-quote {
+    color: #4e666e;
+    font-size: 13px;
+    line-height: 1.5;
+    margin-top: 12px;
+  }
+
+  .seller-nav {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .seller-nav-btn {
+    min-height: 54px;
+    padding: 10px 12px;
+    border-radius: 16px;
+    border: 1px solid rgba(21,37,42,.10);
+    background: rgba(250,250,250,.92);
+    color: #21343a;
+    box-shadow: none;
+    font-size: 12px;
+    font-weight: 850;
+    transition:
+      transform .18s ease,
+      border-color .18s ease,
+      background .18s ease,
+      box-shadow .18s ease;
+  }
+
+  .seller-nav-btn:hover {
+    transform: translateY(-1px);
+    border-color: rgba(15,157,154,.20);
+    background: rgba(255,255,255,.98);
+    box-shadow: 0 6px 18px rgba(21,37,42,.06);
+  }
+
+  .seller-nav-btn span {
+    margin-top: 3px;
+    font-size: 10px;
+    line-height: 1.15;
+    font-weight: 800;
+    color: #73878e;
+    letter-spacing: .01em;
+  }
+
+  .detail-actions {
+    margin-top: 14px;
+    justify-content: flex-end;
+  }
+
+  .close-btn {
+    min-height: 44px;
+    padding: 0 18px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 850;
+    background: #11252b;
+    color: #fff;
+    box-shadow: none;
+  }
+
+  .close-btn:hover {
+    transform: translateY(-1px);
+  }
+
+  @media (max-width: 900px) {
+    .detail-panel {
+      border-radius: 22px;
+      padding: 15px;
+      box-shadow: 0 16px 36px rgba(21,37,42,.10);
+    }
+
+    .value-box {
+      border-radius: 18px;
+      padding: 12px 13px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .detail-panel {
+      border-radius: 20px;
+      padding: 14px;
+    }
+
+    .detail-top {
+      gap: 11px;
+    }
+
+    .detail-name {
+      font-size: 15px;
+    }
+
+    .detail-meta {
+      font-size: 10px;
+    }
+
+    .value-box {
+      margin-top: 10px;
+      padding: 11px 12px;
+    }
+
+    .value-box small {
+      font-size: 8.5px;
+    }
+
+    .value-box strong {
+      font-size: 17px;
+    }
+
+    .detail-quote {
+      margin-top: 10px;
+      font-size: 11px;
+      line-height: 1.42;
+    }
+
+    .seller-nav {
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .seller-nav-btn {
+      min-height: 50px;
+      padding: 8px 10px;
+      border-radius: 14px;
+      font-size: 11px;
+    }
+
+    .seller-nav-btn span {
+      font-size: 9px;
+    }
+
+    .detail-actions {
+      margin-top: 12px;
+    }
+
+    .close-btn {
+      min-height: 42px;
+      font-size: 12px;
+      padding: 0 16px;
+    }
+  }
+
+
+  /* V14 · ficha limpia */
+  .detail-panel {
+    width: clamp(285px, 29%, 350px);
+    padding: 16px;
+  }
+
+  .detail-panel .detail-top {
+    margin-bottom: 12px;
+  }
+
+  .detail-meta {
+    display: none;
+  }
+
+  .value-box {
+    margin-top: 0;
+    padding: 13px 14px;
+  }
+
+  .value-box strong {
+    font-size: clamp(19px, 1.9cqw, 23px);
+  }
+
+  .detail-hint {
+    margin: 10px 2px 0;
+    color: #819096;
+    font-size: 10px;
+    line-height: 1.35;
+    font-weight: 650;
+  }
+
+  .seller-nav,
+  .detail-actions,
+  .detail-quote {
+    display: none !important;
+  }
+
+  @media (max-width: 900px) {
+    .detail-panel {
+      width: min(320px, calc(100% - 24px));
+      left: auto;
+      right: 12px;
+      bottom: 12px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .detail-panel {
+      left: 10px;
+      right: 10px;
+      width: auto;
+      padding: 13px;
+    }
+
+    .detail-hint {
+      font-size: 9px;
+    }
+  }
+
+
+  /* V15 · panel inteligente */
+  .detail-panel {
+    left:auto;
+    right:14px;
+  }
+
+  .detail-panel.panel-left {
+    left:14px;
+    right:auto;
+  }
+
+  .detail-panel.panel-right {
+    left:auto;
+    right:14px;
+  }
+
+  .detail-panel.panel-left.switching-seller {
+    transform:translateX(-10px) translateY(8px) scale(.992);
+  }
+
+  .detail-panel.panel-right.switching-seller {
+    transform:translateX(10px) translateY(8px) scale(.992);
+  }
+
+  @media (max-width: 900px) {
+    .detail-panel.panel-left,
+    .detail-panel.panel-right {
+      left:auto;
+      right:12px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .detail-panel.panel-left,
+    .detail-panel.panel-right {
+      left:10px;
+      right:10px;
+    }
+  }
+
+
+  /* V16 · hilos visibles y fotos más grandes */
+  .seller {
+    width: clamp(70px, 7.4cqw, 96px);
+    height: clamp(70px, 7.4cqw, 96px);
+    overflow: visible;
+  }
+
+  .seller .ring {
+    box-shadow:
+      0 10px 24px rgba(0,0,0,.22),
+      0 0 0 4px rgba(255,255,255,.16);
+  }
+
+  .seller .avatar {
+    inset: 6px;
+  }
+
+  .seller .thread {
+    position: absolute;
+    left: 50%;
+    top: calc(100% - 2px);
+    width: 2px;
+    height: clamp(18px, 2.2cqw, 28px);
+    transform: translateX(-50%);
+    background: linear-gradient(to bottom, rgba(255,255,255,.82), rgba(255,255,255,.35));
+    border-radius: 999px;
+    box-shadow: 0 0 0 1px rgba(12,35,40,.08);
+    opacity: .95;
+    pointer-events: none;
+  }
+
+  .seller .thread::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -4px;
+    width: 6px;
+    height: 6px;
+    transform: translateX(-50%);
+    border-radius: 50%;
+    background: rgba(255,255,255,.92);
+    box-shadow: 0 0 0 2px rgba(17,37,43,.12);
+  }
+
+  .seller .label {
+    top: calc(100% + 22px);
+    padding: 6px 10px;
+    font-size: clamp(9px, .86cqw, 11px);
+    font-weight: 900;
+    border-radius: 999px;
+    box-shadow: 0 6px 18px rgba(0,0,0,.16);
+  }
+
+  .mural-viewport.focused .seller.selected .thread {
+    background: linear-gradient(to bottom, rgba(255,200,120,.95), rgba(255,255,255,.45));
+  }
+
+  @media (max-width: 1180px) and (min-width: 901px) {
+    .seller {
+      width: clamp(66px, 7cqw, 84px);
+      height: clamp(66px, 7cqw, 84px);
+    }
+
+    .seller .thread {
+      height: 22px;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .seller {
+      width: clamp(70px, 10cqw, 86px);
+      height: clamp(70px, 10cqw, 86px);
+    }
+
+    .seller .thread {
+      height: 20px;
+    }
+
+    .seller .label {
+      top: calc(100% + 18px);
+      font-size: 9px;
+      max-width: 132px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .seller {
+      width: 72px;
+      height: 72px;
+    }
+
+    .seller .thread {
+      height: 18px;
+    }
+
+    .seller .label {
+      top: calc(100% + 17px);
+      font-size: 8px;
+      max-width: 116px;
+      padding: 5px 8px;
+    }
+  }
+
+
+  /* =========================
+     V17 · HILOS TIPO PREZI
+     Más visibles y con fotos claramente más grandes
+     ========================= */
+
+  .seller {
+    width: clamp(92px, 8.8cqw, 126px) !important;
+    height: clamp(92px, 8.8cqw, 126px) !important;
+    overflow: visible !important;
+  }
+
+  .seller .pulse {
+    inset: -10px;
+  }
+
+  .seller .ring {
+    box-shadow:
+      0 14px 30px rgba(0,0,0,.24),
+      0 0 0 5px rgba(255,255,255,.14) !important;
+  }
+
+  .seller .avatar {
+    inset: 7px !important;
+  }
+
+  /* Hilo claramente visible entre la foto y el nombre */
+  .seller .thread {
+    position: absolute;
+    left: 50%;
+    top: calc(100% - 1px);
+    width: 4px;
+    height: clamp(30px, 3cqw, 42px);
+    transform: translateX(-50%);
+    background: linear-gradient(
+      to bottom,
+      rgba(255,187,85,.98) 0%,
+      rgba(255,255,255,.90) 35%,
+      rgba(255,255,255,.62) 100%
+    );
+    border-radius: 999px;
+    box-shadow:
+      0 0 0 1px rgba(18,37,42,.10),
+      0 5px 16px rgba(0,0,0,.14);
+    opacity: 1;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .seller .thread::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: -2px;
+    width: 10px;
+    height: 10px;
+    transform: translateX(-50%);
+    border-radius: 50%;
+    background: rgba(255,255,255,.96);
+    border: 2px solid rgba(255,177,67,.9);
+    box-shadow: 0 2px 8px rgba(0,0,0,.12);
+  }
+
+  .seller .thread::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -6px;
+    width: 10px;
+    height: 10px;
+    transform: translateX(-50%);
+    border-radius: 50%;
+    background: rgba(255,255,255,.96);
+    border: 2px solid rgba(21,37,42,.18);
+    box-shadow: 0 2px 8px rgba(0,0,0,.12);
+  }
+
+  .seller .label {
+    top: calc(100% + 34px) !important;
+    padding: 7px 12px !important;
+    font-size: clamp(10px, .96cqw, 13px) !important;
+    font-weight: 900 !important;
+    max-width: 210px !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-radius: 999px;
+    box-shadow:
+      0 8px 22px rgba(0,0,0,.18),
+      inset 0 0 0 1px rgba(255,255,255,.06);
+    z-index: 3;
+  }
+
+  .mural-viewport.focused .seller.selected {
+    transform: translate(-50%, -50%) scale(1.16) !important;
+  }
+
+  .mural-viewport.focused .seller.selected .thread {
+    background: linear-gradient(
+      to bottom,
+      rgba(255,170,52,1) 0%,
+      rgba(255,220,160,.98) 34%,
+      rgba(255,255,255,.72) 100%
+    );
+    box-shadow:
+      0 0 0 1px rgba(18,37,42,.10),
+      0 6px 18px rgba(255,170,52,.22);
+  }
+
+  /* Ficha un poco más protagónica */
+  .detail-avatar {
+    width: 116px !important;
+    height: 116px !important;
+  }
+
+  @media (max-width: 1180px) and (min-width: 901px) {
+    .seller {
+      width: clamp(84px, 8cqw, 108px) !important;
+      height: clamp(84px, 8cqw, 108px) !important;
+    }
+
+    .seller .thread {
+      height: 34px;
+    }
+
+    .seller .label {
+      top: calc(100% + 30px) !important;
+      max-width: 185px !important;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .seller {
+      width: clamp(78px, 11cqw, 98px) !important;
+      height: clamp(78px, 11cqw, 98px) !important;
+    }
+
+    .seller .thread {
+      width: 3px;
+      height: 26px;
+    }
+
+    .seller .thread::before,
+    .seller .thread::after {
+      width: 8px;
+      height: 8px;
+    }
+
+    .seller .label {
+      top: calc(100% + 26px) !important;
+      max-width: 160px !important;
+      font-size: 10px !important;
+    }
+
+    .detail-avatar {
+      width: 90px !important;
+      height: 90px !important;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .seller {
+      width: 86px !important;
+      height: 86px !important;
+    }
+
+    .seller .thread {
+      width: 3px;
+      height: 24px;
+    }
+
+    .seller .label {
+      top: calc(100% + 24px) !important;
+      max-width: 138px !important;
+      padding: 6px 10px !important;
+      font-size: 9px !important;
+    }
+
+    .detail-avatar {
+      width: 82px !important;
+      height: 82px !important;
+    }
+  }
+
+
+  /* ===================================================
+     V18 · RED TIPO PREZI + NODOS REALMENTE GRANDES
+     =================================================== */
+
+  /* El hilo real vive en SVG por detrás de las fotos. */
+  .thread-network {
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    z-index:4;
+    pointer-events:none;
+    overflow:visible;
+  }
+
+  .thread-network .thread-shadow {
+    fill:none;
+    stroke:rgba(22,35,39,.24);
+    stroke-width:9;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+    vector-effect:non-scaling-stroke;
+  }
+
+  .thread-network .thread-main {
+    fill:none;
+    stroke:#f28b2c;
+    stroke-width:5;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+    vector-effect:non-scaling-stroke;
+    filter:drop-shadow(0 3px 5px rgba(115,61,12,.22));
+    stroke-dasharray:1;
+    stroke-dashoffset:1;
+    animation:drawNetwork 1.9s cubic-bezier(.22,1,.36,1) forwards;
+  }
+
+  .thread-network .thread-glow {
+    fill:none;
+    stroke:rgba(255,177,72,.28);
+    stroke-width:13;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+    vector-effect:non-scaling-stroke;
+  }
+
+  @keyframes drawNetwork {
+    to { stroke-dashoffset:0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .thread-network .thread-main {
+      animation:none;
+      stroke-dashoffset:0;
+    }
+  }
+
+  /* Ocultamos el tallo vertical de la V16/V17: ahora hay una red REAL entre nodos. */
+  .seller .thread {
+    display:none !important;
+  }
+
+  /* Fotos mucho más grandes: claramente superiores a las versiones anteriores. */
+  .seller {
+    width:clamp(122px, 10.2cqw, 166px) !important;
+    height:clamp(122px, 10.2cqw, 166px) !important;
+    overflow:visible !important;
+    z-index:5;
+  }
+
+  .seller .ring {
+    background:#f28b2c !important;
+    box-shadow:
+      0 14px 34px rgba(0,0,0,.23),
+      0 0 0 5px rgba(255,255,255,.92),
+      0 0 0 8px rgba(242,139,44,.22) !important;
+  }
+
+  .seller .avatar {
+    inset:8px !important;
+    border:3px solid rgba(255,255,255,.92) !important;
+  }
+
+  .seller .pulse {
+    inset:-14px !important;
+    border:2px solid rgba(242,139,44,.58) !important;
+  }
+
+  .seller .label {
+    top:calc(100% + 12px) !important;
+    max-width:235px !important;
+    padding:8px 13px !important;
+    font-size:clamp(11px, 1cqw, 14px) !important;
+    font-weight:900 !important;
+    border-radius:999px !important;
+    background:rgba(16,31,35,.92) !important;
+    box-shadow:0 8px 24px rgba(0,0,0,.18) !important;
+  }
+
+  .mural-viewport.focused .seller.selected {
+    transform:translate(-50%, -50%) scale(1.20) !important;
+    z-index:8;
+  }
+
+  .mural-viewport.focused .seller.selected .ring {
+    box-shadow:
+      0 18px 42px rgba(0,0,0,.25),
+      0 0 0 6px rgba(255,255,255,.96),
+      0 0 0 12px rgba(242,139,44,.34) !important;
+  }
+
+  /* Ficha también más grande y con una foto protagónica. */
+  .detail-panel {
+    width:clamp(410px, 36%, 500px) !important;
+    padding:24px !important;
+    border-radius:28px !important;
+  }
+
+  .detail-top {
+    min-height:148px !important;
+    gap:20px !important;
+  }
+
+  .detail-avatar {
+    width:148px !important;
+    height:148px !important;
+    border-width:5px !important;
+  }
+
+  .detail-name {
+    font-size:clamp(25px, 2.35cqw, 34px) !important;
+    line-height:.98 !important;
+  }
+
+  .value-box {
+    margin-top:18px !important;
+    padding:18px 20px !important;
+    border-radius:22px !important;
+  }
+
+  .value-box small {
+    font-size:11px !important;
+  }
+
+  .value-box strong {
+    font-size:clamp(26px, 2.5cqw, 34px) !important;
+  }
+
+  .detail-hint {
+    margin-top:14px !important;
+    font-size:11px !important;
+  }
+
+  /* El panel inteligente sigue respetando el lado contrario al asesor. */
+  .detail-panel.panel-left {
+    left:18px !important;
+    right:auto !important;
+  }
+
+  .detail-panel.panel-right {
+    right:18px !important;
+    left:auto !important;
+  }
+
+  @media (max-width:1180px) and (min-width:901px) {
+    .seller {
+      width:clamp(102px, 9.4cqw, 132px) !important;
+      height:clamp(102px, 9.4cqw, 132px) !important;
+    }
+
+    .seller .label {
+      font-size:11px !important;
+      max-width:190px !important;
+    }
+
+    .detail-panel {
+      width:clamp(360px, 35%, 420px) !important;
+      padding:20px !important;
+    }
+
+    .detail-avatar {
+      width:118px !important;
+      height:118px !important;
+    }
+
+    .detail-top {
+      min-height:118px !important;
+    }
+
+    .detail-name {
+      font-size:24px !important;
+    }
+  }
+
+  @media (max-width:900px) {
+    .seller {
+      width:clamp(92px, 13cqw, 116px) !important;
+      height:clamp(92px, 13cqw, 116px) !important;
+    }
+
+    .seller .label {
+      max-width:155px !important;
+      padding:6px 10px !important;
+      font-size:10px !important;
+    }
+
+    .detail-panel,
+    .detail-panel.panel-left,
+    .detail-panel.panel-right {
+      left:12px !important;
+      right:12px !important;
+      width:auto !important;
+      padding:18px !important;
+    }
+
+    .detail-avatar {
+      width:104px !important;
+      height:104px !important;
+    }
+
+    .detail-top {
+      min-height:104px !important;
+    }
+
+    .detail-name {
+      font-size:22px !important;
+    }
+  }
+
+  @media (max-width:640px) {
+    .seller {
+      width:94px !important;
+      height:94px !important;
+    }
+
+    .seller .label {
+      max-width:132px !important;
+      font-size:9px !important;
+    }
+
+    .detail-panel,
+    .detail-panel.panel-left,
+    .detail-panel.panel-right {
+      left:10px !important;
+      right:10px !important;
+      width:auto !important;
+      padding:16px !important;
+    }
+
+    .detail-avatar {
+      width:92px !important;
+      height:92px !important;
+    }
+
+    .detail-top {
+      min-height:92px !important;
+      gap:14px !important;
+    }
+
+    .detail-name {
+      font-size:20px !important;
+    }
+
+    .value-box {
+      padding:14px 15px !important;
+    }
+
+    .value-box strong {
+      font-size:22px !important;
+    }
+  }
+
+
+  /* V20 · Limpieza del header */
+  .folder-status,
+  .top-pill {
+    display:none !important;
+  }
+
+  .folder-loader {
+    gap:0 !important;
+  }
+
+
+  /* V22 · CSV dinámico y opiniones completas */
+  .csv-btn {
+    border-color:rgba(15,157,154,.34);
+    background:rgba(15,157,154,.06);
+  }
+
+  .value-heading {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:12px;
+  }
+
+  .value-heading small {
+    margin:0 !important;
+  }
+
+  .opinion-count {
+    flex:0 0 auto;
+    color:#75888e;
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:.03em;
+  }
+
+  .opinion-chips {
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+
+  .opinion-chip {
+    display:inline-flex;
+    align-items:center;
+    min-height:34px;
+    padding:7px 11px;
+    border-radius:999px;
+    border:1px solid rgba(21,37,42,.10);
+    background:rgba(255,255,255,.88);
+    color:#20353b;
+    font-size:12px;
+    font-weight:800;
+    line-height:1.15;
+    box-shadow:0 3px 10px rgba(21,37,42,.04);
+    text-transform:uppercase;
+  }
+
+  .opinion-chip.empty {
+    color:#829198;
+    background:rgba(255,255,255,.52);
+    font-weight:700;
+  }
+
+  .csv-toast {
+    position:fixed;
+    left:50%;
+    bottom:22px;
+    transform:translate(-50%, 16px);
+    opacity:0;
+    pointer-events:none;
+    z-index:999;
+    max-width:min(520px, calc(100% - 28px));
+    padding:10px 15px;
+    border-radius:999px;
+    background:rgba(17,37,43,.94);
+    color:#fff;
+    font-size:12px;
+    font-weight:800;
+    text-align:center;
+    box-shadow:0 10px 30px rgba(0,0,0,.18);
+    transition:opacity .28s ease, transform .28s ease;
+  }
+
+  .csv-toast.show {
+    opacity:1;
+    transform:translate(-50%, 0);
+  }
+
+  @media (max-width:640px) {
+    .folder-loader {
+      width:100%;
+      display:grid !important;
+      grid-template-columns:1fr 1fr;
+      gap:8px !important;
+    }
+
+    .folder-btn {
+      width:100%;
+      min-width:0;
+      padding:9px 8px;
+      font-size:10px;
+    }
+
+    .opinion-chips {
+      gap:6px;
+    }
+
+    .opinion-chip {
+      min-height:30px;
+      padding:6px 9px;
+      font-size:10px;
+    }
+  }
+
+
+  /* V24 · mural un poco más alto */
+  .mural-viewport {
+    aspect-ratio: 2048 / 760 !important;
+    min-height: 500px;
+  }
+
+  /* La foto de fondo mantiene su proporción: se recorta, no se estira. */
+  .mural-scene {
+    background-size: cover !important;
+    background-position: center center !important;
+  }
+
+  /* Un poco más de espacio interno para la ficha en escritorio. */
+  .detail-panel {
+    top: 50% !important;
+    bottom: auto !important;
+    transform: translateY(-50%);
+  }
+
+  .detail-panel.open {
+    transform: translateY(-50%) scale(1) !important;
+  }
+
+  .detail-panel.switching-seller {
+    opacity: 0;
+    transform: translateY(calc(-50% + 8px)) scale(.992) !important;
+  }
+
+  .detail-panel.panel-left.switching-seller {
+    transform: translateX(-10px) translateY(calc(-50% + 8px)) scale(.992) !important;
+  }
+
+  .detail-panel.panel-right.switching-seller {
+    transform: translateX(10px) translateY(calc(-50% + 8px)) scale(.992) !important;
+  }
+
+  @media (max-width: 1180px) and (min-width: 901px) {
+    .mural-viewport {
+      aspect-ratio: 16 / 6.5 !important;
+      min-height: 470px;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .mural-viewport {
+      aspect-ratio: 16 / 9.5 !important;
+      min-height: 520px;
+    }
+
+    .detail-panel,
+    .detail-panel.panel-left,
+    .detail-panel.panel-right {
+      top: auto !important;
+      bottom: 12px !important;
+      transform: translateY(28px) scale(.985);
+    }
+
+    .detail-panel.open {
+      transform: translateY(0) scale(1) !important;
+    }
+
+    .detail-panel.switching-seller,
+    .detail-panel.panel-left.switching-seller,
+    .detail-panel.panel-right.switching-seller {
+      transform: translateY(8px) scale(.992) !important;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .mural-viewport {
+      min-height: 640px !important;
+    }
+  }
+
+
+  /* V25 · panel en lado útil */
+  .detail-panel.panel-left {
+    left: 22px !important;
+    right: auto !important;
+  }
+
+  .detail-panel.panel-right {
+    right: 22px !important;
+    left: auto !important;
+  }
+
+  @media (max-width: 900px) {
+    .detail-panel.panel-left,
+    .detail-panel.panel-right {
+      left: 12px !important;
+      right: 12px !important;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .detail-panel.panel-left,
+    .detail-panel.panel-right {
+      left: 10px !important;
+      right: 10px !important;
+    }
+  }
+
+
+  /* GitHub Pages: versión autónoma */
+  .topbar {
+    grid-template-columns: 1fr !important;
+  }
+  .brand-wrap {
+    width:100%;
+  }
+
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="topbar">
+    <div class="brand-wrap">
+      <div class="brand-mark">A</div>
+      <div class="brand-copy">
+        <h1>Mural Interactivo ABRACOL</h1>
+        <p>Los valores que nos representan</p>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="intro">
+      <div>
+        <div class="eyebrow">Experiencia por UNE</div>
+        <h2>Conoce a las personas detrás de cada equipo.</h2>
+        <p>Cambia de UNE y explora su mural. Selecciona a un vendedor para acercarte a su historia y descubrir el valor que representa para su equipo.</p>
+      </div>
+    </section>
+
+    <nav class="tabs-wrap" aria-label="Seleccionar UNE" id="tabs"></nav>
+
+    <section class="stage-card">
+      <div class="mural-viewport" id="viewport" aria-live="polite">
+        <div class="mural-scene" id="scene"></div>
+        <div class="ambient-vignette"></div>
+        <div class="transition-wash" aria-hidden="true"></div>
+
+        <div class="une-badge">
+          <span class="une-dot"></span>
+          <span id="uneBadge">MEDELLÍN & NACIONAL</span>
+        </div>
+
+        <div class="help-chip" id="helpChip">Haz clic en un vendedor para descubrir el valor que representa.</div>
+
+        <svg class="thread-network" id="threadNetwork" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
+        <div class="seller-layer" id="sellerLayer"></div>
+
+        <aside class="detail-panel" id="detailPanel" aria-hidden="true">
+          <div class="detail-top">
+            <div class="detail-avatar" id="detailAvatar">AM</div>
+            <div>
+              <h3 class="detail-name" id="detailName">Nombre vendedor</h3>
+              <div class="detail-meta" id="detailMeta">UNE · Cargo</div>
+            </div>
+          </div>
+          <div class="value-box">
+            <div class="value-heading">
+              <small>Valores que reconoce su equipo</small>
+              <span class="opinion-count" id="opinionCount"></span>
+            </div>
+            <div class="opinion-chips" id="opinionChips" aria-live="polite"></div>
+          </div>
+          <p class="detail-hint">Selecciona otra foto del mural para continuar.</p>
+        </aside>
+      </div>
+    </section>
+
+    <div class="footer-row">
+      <div class="status"><span>UNE activa:</span> <b id="footerUne">MEDELLÍN & NACIONAL</b></div>
+      <div id="sellerCount">4 vendedores de muestra</div>
+    </div>
+  </main>
+</div>
+<script>
+(() => {
+  const DATA = {"CENTRO": [{"name": "CLAUDIA NORATO", "photoStem": "CLAUDIA NORATO", "initials": "CN", "role": "Equipo CENTRO", "value": "Valores del equipo", "quote": "", "x": 20, "y": 61, "photo": null, "photoPosition": "center center", "rawOpinions": ["Noble", "Valiente", "Perseverancia", "Amable"]}, {"name": "YESID HERNANDEZ", "photoStem": "YESID HERNANDEZ", "initials": "YH", "role": "Equipo CENTRO", "value": "Valores del equipo", "quote": "", "x": 38, "y": 35, "photo": null, "photoPosition": "center center", "rawOpinions": ["Intrepido", "Solidario", "Perseverancia", "Juicioso"]}, {"name": "EDWIN GARAY", "photoStem": "EDWIN GARAY", "initials": "EG", "role": "Equipo CENTRO", "value": "Valores del equipo", "quote": "", "x": 57, "y": 56, "photo": null, "photoPosition": "center center", "rawOpinions": ["Resiliente", "Amistoso", "Guerrero", "Trabajador"]}, {"name": "YEFERSON CARDENAS", "photoStem": "YEFERSON CARDENAS", "initials": "YC", "role": "Equipo CENTRO", "value": "Valores del equipo", "quote": "", "x": 76, "y": 34, "photo": null, "photoPosition": "center center", "rawOpinions": ["Versatil", "Solidario", "Inteligente", "Responsable"]}], "NORTE": [{"name": "LEIDY SANDOVAL", "photoStem": "Leidy Sandoval", "initials": "LS", "role": "Equipo NORTE", "value": "Valores del equipo", "quote": "", "x": 20, "y": 61, "photo": null, "photoPosition": "center center", "rawOpinions": ["Humildad", "Dedicada", "Responsable", "Inteligente", "Perseverante", "Persistente"]}, {"name": "WENDY MARTINEZ", "photoStem": "Wendy Martinez", "initials": "WM", "role": "Equipo NORTE", "value": "Valores del equipo", "quote": "", "x": 38, "y": 35, "photo": null, "photoPosition": "center center", "rawOpinions": ["Responsabilidad", "Perseverante", "Amable", "Resiliente", "Integra", "Amorosa"]}, {"name": "LORENA FILOS", "photoStem": "Lorena Filos", "initials": "LF", "role": "Equipo NORTE", "value": "Valores del equipo", "quote": "", "x": 57, "y": 56, "photo": null, "photoPosition": "center center", "rawOpinions": ["Respeto", "Amistosa", "Respetuosa", "Amable", "Compromiso", "Responsable"]}, {"name": "JORGE BARRERA", "photoStem": "Jorge Barrera", "initials": "JB", "role": "Equipo NORTE", "value": "Valores del equipo", "quote": "", "x": 76, "y": 34, "photo": null, "photoPosition": "center center", "rawOpinions": ["Respeto", "Inteligencia", "Compromiso", "Entusiasta", "Transparencia", "Amistoso"]}, {"name": "JOHAN CASTELLANOS", "photoStem": "Johan Castellanos", "initials": "JC", "role": "Equipo NORTE", "value": "Valores del equipo", "quote": "", "x": 31, "y": 69, "photo": null, "photoPosition": "center center", "rawOpinions": ["Honestidad", "Fanatico", "solidario", "Paciente", "Generosidad", "Perseverante"]}, {"name": "JOHANA GUERRA", "photoStem": "Johana Guerra", "initials": "JG", "role": "Equipo NORTE", "value": "Valores del equipo", "quote": "", "x": 66, "y": 70, "photo": null, "photoPosition": "center center", "rawOpinions": ["Generosidad", "Sincero", "Valiente", "Constante", "Bondad", "Responsable"]}], "OCCIDENTE": [{"name": "LUCELLY RINCÓN", "photoStem": "LUCELLY RINCÓN", "initials": "LR", "role": "Equipo OCCIDENTE", "value": "Valores del equipo", "quote": "", "x": 20, "y": 61, "photo": null, "photoPosition": "center center", "rawOpinions": ["Responsabilidad", "Liderazgo", "Compromiso", "Resilencia", "Pasión", "Honestidad"]}, {"name": "JOSE VICENTE SIERRA", "photoStem": "JOSE VICENTE SIERRA", "initials": "JV", "role": "Equipo OCCIDENTE", "value": "Valores del equipo", "quote": "", "x": 38, "y": 35, "photo": null, "photoPosition": "center center", "rawOpinions": ["Generoso", "Respetuoso", "Compañerismo", "Honestidad", "Solidario", "Empatico"]}, {"name": "JESUS GELVES", "photoStem": "JESUS GELVES", "initials": "JG", "role": "Equipo OCCIDENTE", "value": "Valores del equipo", "quote": "", "x": 57, "y": 56, "photo": null, "photoPosition": "center center", "rawOpinions": ["Servicial", "Honestidad", "Solidario", "Compromiso", "Respetuoso", "Comprometido"]}, {"name": "HARVIN HURTADO", "photoStem": "HARVIN HURTADO", "initials": "HH", "role": "Equipo OCCIDENTE", "value": "Valores del equipo", "quote": "", "x": 76, "y": 34, "photo": null, "photoPosition": "center center", "rawOpinions": ["Humildad", "Respetuoso", "Honesto", "Organizado", "Disciplina", "Paciencia"]}, {"name": "MAURICIO OROZCO", "photoStem": "MAURICIO OROZCO", "initials": "MO", "role": "Equipo OCCIDENTE", "value": "Valores del equipo", "quote": "", "x": 31, "y": 69, "photo": null, "photoPosition": "center center", "rawOpinions": ["Respetuoso", "Organizado", "Leal", "Honesto", "Organizado", "Empatico"]}, {"name": "JHON JAIRO DUQUE", "photoStem": "JHON JAIRO DUQUE", "initials": "JJ", "role": "Equipo OCCIDENTE", "value": "Valores del equipo", "quote": "", "x": 66, "y": 70, "photo": null, "photoPosition": "center center", "rawOpinions": ["Lealtad", "Colaborativo", "Apasionado", "Solidario", "Entusiasta", "Gratitud"]}], "INDUSTRIA": [{"name": "JEISON MEJIA", "photoStem": "JEISON MEJIA", "initials": "JM", "role": "Equipo INDUSTRIA", "value": "Valores del equipo", "quote": "", "x": 20, "y": 61, "photo": null, "photoPosition": "center center", "rawOpinions": ["Empatia", "PERSEVERANCIA", "Compromiso", "Leal", "Autentico", "Comprometido con trabajo", "Disciplina"]}, {"name": "RUBEN FIGUEROA", "photoStem": "RUBEN FIGUEROA", "initials": "RF", "role": "Equipo INDUSTRIA", "value": "Valores del equipo", "quote": "", "x": 38, "y": 35, "photo": null, "photoPosition": "center center", "rawOpinions": ["Resiliencia", "HUMILDAD", "Solidaridad", "Servicial", "Amistoso", "Compañerismo", "Carismatico"]}, {"name": "ANA MARIA HERNANDEZ", "photoStem": "ANA MARIA HERNANDEZ", "initials": "AM", "role": "Equipo INDUSTRIA", "value": "Valores del equipo", "quote": "", "x": 57, "y": 56, "photo": null, "photoPosition": "center center", "rawOpinions": ["Perseverancia", "SOLIDARIDAD", "Respeto", "Amable", "Bondadosa", "Prudente", "Amigable"]}, {"name": "TEMISTOCLES ORTIZ", "photoStem": "TEMISTOCLES ORTIZ", "initials": "TO", "role": "Equipo INDUSTRIA", "value": "Valores del equipo", "quote": "", "x": 76, "y": 34, "photo": null, "photoPosition": "center center", "rawOpinions": ["Espiritualidad", "EMPATIA", "Respeto", "Positivo", "Respetuoso", "Responsable", "Amigable"]}, {"name": "JONATHAN OLAYA", "photoStem": "JONATHAN OLAYA", "initials": "JO", "role": "Equipo INDUSTRIA", "value": "Valores del equipo", "quote": "", "x": 31, "y": 69, "photo": null, "photoPosition": "center center", "rawOpinions": ["Honestidad", "RESPONSABILIDAD", "Responsabilidad", "Organizado", "Disciplinado", "Liderazgo", "Ordenado"]}, {"name": "NILSON HINCAPIE", "photoStem": "NILSON HINCAPIE", "initials": "NH", "role": "Equipo INDUSTRIA", "value": "Valores del equipo", "quote": "", "x": 66, "y": 70, "photo": null, "photoPosition": "center center", "rawOpinions": ["Responsable", "EMPATICO", "Honestidad", "Seguro", "Perseverante", "Compromiso", "Amigable"]}, {"name": "ANDRES ORTIZ", "photoStem": "ANDRES ORTIZ", "initials": "AO", "role": "Equipo INDUSTRIA", "value": "Valores del equipo", "quote": "", "x": 88, "y": 55, "photo": null, "photoPosition": "center center", "rawOpinions": ["Empatico", "LIDERAZGO", "Trabajo de equipo", "Disponibilidad", "Servicial", "Liderazgo", "Amigable"]}], "MEDELLÍN & NACIONAL": [{"name": "YAMILETH CARDONA", "photoStem": "YAMILETH CARDONA", "initials": "YC", "role": "Equipo MEDELLÍN & NACIONAL", "value": "Valores del equipo", "quote": "", "x": 20, "y": 61, "photo": null, "photoPosition": "center center", "rawOpinions": ["Carismatica", "Solidaria", "Lealtad", "Liderazgo", "Empatia"]}, {"name": "LINA GUTIERREZ", "photoStem": "LINA GUTIERREZ", "initials": "LG", "role": "Equipo MEDELLÍN & NACIONAL", "value": "Valores del equipo", "quote": "", "x": 38, "y": 35, "photo": null, "photoPosition": "center center", "rawOpinions": ["Honestidad", "Divertida", "Alegre", "Humilde", "Empatia"]}, {"name": "BRAYAN MUÑOZ", "photoStem": "BRAYAN MUÑOZ", "initials": "BM", "role": "Equipo MEDELLÍN & NACIONAL", "value": "Valores del equipo", "quote": "", "x": 57, "y": 56, "photo": null, "photoPosition": "center center", "rawOpinions": ["Alegria", "Amistoso", "Responsable", "Comprometido", "Lealtad"]}, {"name": "RICARDO FADUS", "photoStem": "RICARDO FADUS", "initials": "RF", "role": "Equipo MEDELLÍN & NACIONAL", "value": "Valores del equipo", "quote": "", "x": 76, "y": 34, "photo": null, "photoPosition": "center center", "rawOpinions": ["Generosidad", "Empatico", "Lealtad", "Comprometido", "Generoso"]}, {"name": "ESNEIDER BUSTAMANTE", "photoStem": "ESNEIDER BUSTAMANTE", "initials": "EB", "role": "Equipo MEDELLÍN & NACIONAL", "value": "Valores del equipo", "quote": "", "x": 31, "y": 69, "photo": null, "photoPosition": "center center", "rawOpinions": ["Respetuoso", "Trabajador", "Empatia", "Amistoso", "Carismatico"]}, {"name": "YEFERSON URIBE", "photoStem": "YEFERSON URIBE", "initials": "YU", "role": "Equipo MEDELLÍN & NACIONAL", "value": "Valores del equipo", "quote": "", "x": 66, "y": 70, "photo": null, "photoPosition": "center center", "rawOpinions": ["Servicial", "Responsable", "Leal", "Compañerismo", "Persistente"]}], "EXPORTACIONES": [{"name": "JUAN CAMILO MALAGÓN", "photoStem": "JUAN CAMILO MALAGÓN", "initials": "JC", "role": "Equipo EXPORTACIONES", "value": "Valores del equipo", "quote": "", "x": 20, "y": 61, "photo": null, "photoPosition": "center center", "rawOpinions": ["Perseverante", "Leal", "Compromiso", "Solidario", "Liderazgo"]}]};
+
+  const tabsEl = document.getElementById("tabs");
+  const sellerLayer = document.getElementById("sellerLayer");
+  const threadNetwork = document.getElementById("threadNetwork");
+  const viewport = document.getElementById("viewport");
+  const scene = document.getElementById("scene");
+  const detailPanel = document.getElementById("detailPanel");
+  const uneBadge = document.getElementById("uneBadge");
+  const footerUne = document.getElementById("footerUne");
+  const sellerCount = document.getElementById("sellerCount");
+  const detailAvatar = document.getElementById("detailAvatar");
+  const detailName = document.getElementById("detailName");
+  const detailMeta = document.getElementById("detailMeta");
+  const folderInput = document.getElementById("folderInput");
+  const folderBtn = document.getElementById("folderBtn");
+  const folderStatus = document.getElementById("folderStatus");
+  const csvInput = document.getElementById("csvInput");
+  const csvBtn = document.getElementById("csvBtn");
+  const csvToast = document.getElementById("csvToast");
+  const opinionChips = document.getElementById("opinionChips");
+  const opinionCount = document.getElementById("opinionCount");
+
+  let currentUne = "MEDELLÍN & NACIONAL";
+  let selectedButton = null;
+  let selectedSellerIndex = -1;
+  let isSwitching = false;
+  let isChangingSeller = false;
+
+
+  const SURVEY_BY_UNE = {"CENTRO": {"CLAUDIA NORATO": ["Noble", "Valiente", "Perseverancia", "Amable"], "YESID HERNANDEZ": ["Intrepido", "Solidario", "Perseverancia", "Juicioso"], "EDWIN GARAY": ["Resiliente", "Amistoso", "Guerrero", "Trabajador"], "YEFERSON CARDENAS": ["Versatil", "Solidario", "Inteligente", "Responsable"]}, "NORTE": {"Leidy Sandoval": ["Humildad", "Dedicada", "Responsable", "Inteligente", "Perseverante", "Persistente"], "Wendy Martinez": ["Responsabilidad", "Perseverante", "Amable", "Resiliente", "Integra", "Amorosa"], "Lorena Filos": ["Respeto", "Amistosa", "Respetuosa", "Amable", "Compromiso", "Responsable"], "Jorge Barrera": ["Respeto", "Inteligencia", "Compromiso", "Entusiasta", "Transparencia", "Amistoso"], "Johan Castellanos": ["Honestidad", "Fanatico", "solidario", "Paciente", "Generosidad", "Perseverante"], "Johana Guerra": ["Generosidad", "Sincero", "Valiente", "Constante", "Bondad", "Responsable"]}, "OCCIDENTE": {"LUCELLY RINCÓN": ["Responsabilidad", "Liderazgo", "Compromiso", "Resilencia", "Pasión", "Honestidad"], "JOSE VICENTE SIERRA": ["Generoso", "Respetuoso", "Compañerismo", "Honestidad", "Solidario", "Empatico"], "JESUS GELVES": ["Servicial", "Honestidad", "Solidario", "Compromiso", "Respetuoso", "Comprometido"], "HARVIN HURTADO": ["Humildad", "Respetuoso", "Honesto", "Organizado", "Disciplina", "Paciencia"], "MAURICIO OROZCO": ["Respetuoso", "Organizado", "Leal", "Honesto", "Organizado", "Empatico"], "JHON JAIRO DUQUE": ["Lealtad", "Colaborativo", "Apasionado", "Solidario", "Entusiasta", "Gratitud"]}, "INDUSTRIA": {"JEISON MEJIA": ["Empatia", "PERSEVERANCIA", "Compromiso", "Leal", "Autentico", "Comprometido con trabajo", "Disciplina"], "RUBEN FIGUEROA": ["Resiliencia", "HUMILDAD", "Solidaridad", "Servicial", "Amistoso", "Compañerismo", "Carismatico"], "ANA MARIA HERNANDEZ": ["Perseverancia", "SOLIDARIDAD", "Respeto", "Amable", "Bondadosa", "Prudente", "Amigable"], "TEMISTOCLES ORTIZ": ["Espiritualidad", "EMPATIA", "Respeto", "Positivo", "Respetuoso", "Responsable", "Amigable"], "JONATHAN OLAYA": ["Honestidad", "RESPONSABILIDAD", "Responsabilidad", "Organizado", "Disciplinado", "Liderazgo", "Ordenado"], "NILSON HINCAPIE": ["Responsable", "EMPATICO", "Honestidad", "Seguro", "Perseverante", "Compromiso", "Amigable"], "ANDRES ORTIZ": ["Empatico", "LIDERAZGO", "Trabajo de equipo", "Disponibilidad", "Servicial", "Liderazgo", "Amigable"]}, "MEDELLÍN & NACIONAL": {"YAMILETH CARDONA": ["Carismatica", "Solidaria", "Lealtad", "Liderazgo", "Empatia"], "LINA GUTIERREZ": ["Honestidad", "Divertida", "Alegre", "Humilde", "Empatia"], "BRAYAN MUÑOZ": ["Alegria", "Amistoso", "Responsable", "Comprometido", "Lealtad"], "RICARDO FADUS": ["Generosidad", "Empatico", "Lealtad", "Comprometido", "Generoso"], "ESNEIDER BUSTAMANTE": ["Respetuoso", "Trabajador", "Empatia", "Amistoso", "Carismatico"], "YEFERSON URIBE": ["Servicial", "Responsable", "Leal", "Compañerismo", "Persistente"]}, "EXPORTACIONES": {"JUAN CAMILO MALAGÓN": ["Perseverante", "Leal", "Compromiso", "Solidario", "Liderazgo"]}};
+
+  function normalizePersonKey(name) {
+    return String(name || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[_-]+/g, " ")
+      .replace(/[^A-Za-z0-9ÑñÁÉÍÓÚÜáéíóúü ]+/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toUpperCase();
+  }
+
+  function getSurveyOpinions(une, sellerName) {
+    const people = SURVEY_BY_UNE[une] || {};
+    const key = normalizePersonKey(sellerName);
+
+    for (const [personName, opinions] of Object.entries(people)) {
+      if (normalizePersonKey(personName) === key) {
+        return Array.isArray(opinions) ? opinions.filter(Boolean) : [];
+      }
+    }
+    return [];
+  }
+
+  function applySurveyToSeller(une, seller) {
+    seller.rawOpinions = getSurveyOpinions(une, seller.name);
+    return seller;
+  }
+
+  Object.keys(DATA).forEach(une => {
+    DATA[une] = DATA[une].map(seller => applySurveyToSeller(une, seller));
+  });
+
+  const FOLDER_TO_UNE = {
+    "UNE CENTRO": "CENTRO",
+    "UNE INDUSTRIA": "INDUSTRIA",
+    "UNE NORTE": "NORTE",
+    "UNE OCCIDENTE": "OCCIDENTE",
+    "UNE MEDELLIN": "MEDELLÍN & NACIONAL",
+    "CUENTAS NACIONALES": "MEDELLÍN & NACIONAL",
+    "EXPORTACIONES": "EXPORTACIONES"
+  };
+
+  const IMAGE_EXTENSIONS = /\.(jpe?g|png|webp)$/i;
+
+  function cleanSellerName(filename) {
+    return filename
+      .replace(/\.[^.]+$/, "")
+      .replace(/[_-]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toUpperCase();
+  }
+
+  function initialsFromName(name) {
+    const parts = name.split(/\s+/).filter(Boolean);
+    if (!parts.length) return "A";
+    if (parts.length === 1) return parts[0].slice(0, 2);
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+
+  function sellerPositions(count) {
+    const presets = [
+      [21,60],[42,39],[64,60],[82,37],
+      [31,33],[53,67],[74,65],[16,35],
+      [90,58],[36,68],[58,34],[72,43]
+    ];
+    return Array.from({length:count}, (_,i) => {
+      if (i < presets.length) return {x:presets[i][0], y:presets[i][1]};
+      const col = i % 5;
+      const row = Math.floor(i / 5) % 2;
+      return {x:16 + col*17, y:36 + row*29};
+    });
+  }
+
+  function revokeImportedPhotos() {
+    Object.values(DATA).flat().forEach(s => {
+      if (s.importedObjectUrl && s.photo) {
+        try { URL.revokeObjectURL(s.photo); } catch {}
+      }
+    });
+  }
+
+  function importFolderFiles(fileList) {
+    const files = Array.from(fileList).filter(file => IMAGE_EXTENSIONS.test(file.name));
+    if (!files.length) {
+      folderStatus.textContent = "No encontré imágenes JPG, PNG o WEBP en esa carpeta.";
+      return;
+    }
+
+    const grouped = {
+      "MEDELLÍN & NACIONAL": [],
+      "OCCIDENTE": [],
+      "CENTRO": [],
+      "NORTE": [],
+      "INDUSTRIA": [],
+      "EXPORTACIONES": []
+    };
+
+    let unmapped = 0;
+
+    files.forEach(file => {
+      const rel = file.webkitRelativePath || file.name;
+      const segments = rel.split("/").filter(Boolean);
+      const folderSegment = segments.find(seg => FOLDER_TO_UNE[seg.toUpperCase()]);
+      if (!folderSegment) {
+        unmapped++;
+        return;
+      }
+
+      const une = FOLDER_TO_UNE[folderSegment.toUpperCase()];
+      grouped[une].push(file);
+    });
+
+    revokeImportedPhotos();
+
+    let importedTotal = 0;
+
+    Object.entries(grouped).forEach(([une, uneFiles]) => {
+      if (!uneFiles.length) return;
+
+      uneFiles.sort((a,b) => a.name.localeCompare(b.name, "es", {sensitivity:"base"}));
+      const positions = sellerPositions(uneFiles.length);
+
+      DATA[une] = uneFiles.map((file, index) => {
+        const name = cleanSellerName(file.name);
+        const pos = positions[index];
+        const seller = {
+          name,
+          initials: initialsFromName(name),
+          role: "Equipo " + une,
+          value: "Pendiente por definir",
+          quote: "Valor y descripción pendientes por definir.",
+          x: pos.x,
+          y: pos.y,
+          photo: URL.createObjectURL(file),
+          photoPosition: "center center",
+          importedObjectUrl: true
+        };
+        return applySurveyToSeller(une, seller);
+      });
+
+      importedTotal += uneFiles.length;
+    });
+
+    renderTabs();
+    renderSellers();
+    uneBadge.textContent = currentUne;
+    footerUne.textContent = currentUne;
+
+    folderStatus.textContent = "";
+  }
+
+  if (folderBtn && folderInput) {
+    folderBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      folderInput.click();
+    });
+
+    folderInput.addEventListener("change", () => {
+      if (folderInput.files && folderInput.files.length) {
+        importFolderFiles(folderInput.files);
+      }
+    });
+  } else {
+    console.error("No se encontró el control de carga de carpeta.");
+  }
+
+
+
+  function detectUneFromCsvFilename(filename) {
+    const key = normalizePersonKey(filename.replace(/\.[^.]+$/, ""));
+
+    if (key.includes("EXPORTACION")) return "EXPORTACIONES";
+    if (key.includes("INDUSTRIA")) return "INDUSTRIA";
+    if (key.includes("OCCIDENTE")) return "OCCIDENTE";
+    if (key.includes("CENTRO")) return "CENTRO";
+    if (key.includes("NORTE")) return "NORTE";
+    if (key.includes("MEDELLIN") || key.includes("NACIONAL")) return "MEDELLÍN & NACIONAL";
+
+    // Si el nombre del CSV no identifica la UNE, se aplica a la pestaña activa.
+    return currentUne;
+  }
+
+  function parseCsvRow(line) {
+    const result = [];
+    let current = "";
+    let quoted = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+
+      if (char === '"') {
+        if (quoted && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          quoted = !quoted;
+        }
+      } else if (char === "," && !quoted) {
+        result.push(current);
+        current = "";
+      } else {
+        current += char;
+      }
+    }
+
+    result.push(current);
+    return result;
+  }
+
+  function parseSurveyCsvText(text) {
+    const lines = String(text || "")
+      .replace(/^\uFEFF/, "")
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(Boolean);
+
+    const rows = lines.map(line => {
+      // Algunos exports llegan con la fila completa entre comillas
+      // y comillas internas duplicadas.
+      if (line.startsWith('"') && line.endsWith('"') && line.includes('""')) {
+        line = line.slice(1, -1).replace(/""/g, '"');
+      }
+      return parseCsvRow(line);
+    });
+
+    if (!rows.length || rows[0].length < 2) {
+      throw new Error("El CSV no contiene columnas de asesores.");
+    }
+
+    const headers = rows[0].map(v => String(v || "").trim());
+    const people = {};
+
+    for (let col = 1; col < headers.length; col++) {
+      const personName = headers[col];
+      if (!personName) continue;
+
+      const opinions = [];
+      for (let row = 1; row < rows.length; row++) {
+        const value = String(rows[row][col] || "").trim();
+        if (value) opinions.push(value);
+      }
+
+      people[personName] = opinions;
+    }
+
+    return people;
+  }
+
+  function refreshSurveyForUne(une) {
+    DATA[une] = DATA[une].map(seller => applySurveyToSeller(une, seller));
+
+    if (currentUne === une) {
+      renderSellers();
+
+      if (selectedSellerIndex >= 0 && DATA[currentUne][selectedSellerIndex]) {
+        setSellerContent(DATA[currentUne][selectedSellerIndex]);
+      }
+    }
+  }
+
+  let toastTimer = null;
+  function showCsvToast(message) {
+    if (!csvToast) return;
+    csvToast.textContent = message;
+    csvToast.classList.add("show");
+
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      csvToast.classList.remove("show");
+    }, 2600);
+  }
+
+  async function importSurveyCsvFiles(fileList) {
+    const files = Array.from(fileList || []).filter(file =>
+      /\.csv$/i.test(file.name)
+    );
+
+    if (!files.length) {
+      showCsvToast("Selecciona uno o más archivos CSV.");
+      return;
+    }
+
+    const updatedUnes = new Set();
+    let totalPeople = 0;
+
+    for (const file of files) {
+      try {
+        const buffer = await file.arrayBuffer();
+
+        let text = new TextDecoder("utf-8", {fatal:false}).decode(buffer);
+
+        // Algunos CSV exportados contienen caracteres Windows-1252
+        // (por ejemplo la Ñ de MUÑOZ) mezclados con contenido UTF-8.
+        // Si UTF-8 introduce el carácter de reemplazo, reintentamos cp1252.
+        if (text.includes("\uFFFD")) {
+          try {
+            text = new TextDecoder("windows-1252").decode(buffer);
+          } catch (_) {
+            // Si el navegador no soporta windows-1252, seguimos con UTF-8.
+          }
+        }
+
+        const people = parseSurveyCsvText(text);
+        const une = detectUneFromCsvFilename(file.name);
+
+        SURVEY_BY_UNE[une] = people;
+        updatedUnes.add(une);
+        totalPeople += Object.keys(people).length;
+      } catch (error) {
+        console.error("Error leyendo CSV:", file.name, error);
+        showCsvToast(`No pude leer ${file.name}.`);
+      }
+    }
+
+    updatedUnes.forEach(refreshSurveyForUne);
+
+    if (updatedUnes.size) {
+      showCsvToast(`${totalPeople} asesores actualizados desde CSV.`);
+    }
+  }
+
+
+  if (csvBtn && csvInput) {
+    csvBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      csvInput.value = "";
+      csvInput.click();
+    });
+
+    csvInput.addEventListener("change", async () => {
+      if (csvInput.files && csvInput.files.length) {
+        await importSurveyCsvFiles(csvInput.files);
+      }
+    });
+  }
+
+
+  const PHOTO_FOLDERS = {
+    "CENTRO": ["UNE CENTRO"],
+    "NORTE": ["UNE NORTE"],
+    "OCCIDENTE": ["UNE OCCIDENTE"],
+    "INDUSTRIA": ["UNE INDUSTRIA"],
+    "EXPORTACIONES": ["EXPORTACIONES"],
+    "MEDELLÍN & NACIONAL": ["UNE MEDELLIN", "CUENTAS NACIONALES"]
+  };
+
+  const PHOTO_EXTENSIONS = [".jpg",".JPG",".jpeg",".JPEG",".png",".PNG",".webp",".WEBP"];
+
+  function webFileStem(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/ñ/gi, "n")
+      .replace(/[^A-Za-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .toLowerCase();
+  }
+
+  function photoCandidates(une, seller) {
+    const folders = PHOTO_FOLDERS[une] || [];
+    const raw = seller.photoStem || seller.name;
+    const stems = [...new Set([
+      raw,
+      raw.toUpperCase(),
+      raw.toLowerCase(),
+      webFileStem(raw)
+    ])];
+
+    const candidates = [];
+    for (const folder of folders) {
+      for (const stem of stems) {
+        for (const ext of PHOTO_EXTENSIONS) {
+          const path = "./assets/fotos/" +
+            encodeURIComponent(folder) + "/" +
+            encodeURIComponent(stem + ext);
+          candidates.push(path);
+        }
+      }
+    }
+    return candidates;
+  }
+
+  function imageExists(url) {
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => resolve(true);
+      img.onerror = () => resolve(false);
+      img.src = url;
+    });
+  }
+
+  async function resolveSellerPhoto(une, seller) {
+    if (seller.photo) return true;
+    const candidates = photoCandidates(une, seller);
+    for (const url of candidates) {
+      if (await imageExists(url)) {
+        seller.photo = url;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  async function resolveAllSellerPhotos() {
+    const jobs = [];
+    Object.entries(DATA).forEach(([une, sellers]) => {
+      sellers.forEach(seller => jobs.push(resolveSellerPhoto(une, seller)));
+    });
+    await Promise.all(jobs);
+    renderSellers();
+  }
+
+  const CSV_FILES = {
+    "CENTRO": "./data/centro.csv",
+    "NORTE": "./data/norte.csv",
+    "OCCIDENTE": "./data/occidente.csv",
+    "INDUSTRIA": "./data/industria.csv",
+    "MEDELLÍN & NACIONAL": "./data/medellin.csv",
+    "EXPORTACIONES": "./data/exportaciones.csv"
+  };
+
+  async function readCsvResponse(response) {
+    const buffer = await response.arrayBuffer();
+    let text = new TextDecoder("utf-8", {fatal:false}).decode(buffer);
+    if (text.includes("\uFFFD")) {
+      try { text = new TextDecoder("windows-1252").decode(buffer); } catch (_) {}
+    }
+    return text;
+  }
+
+  async function refreshSurveysFromRepository() {
+    let changed = false;
+    for (const [une, url] of Object.entries(CSV_FILES)) {
+      try {
+        const response = await fetch(url, {cache:"no-store"});
+        if (!response.ok) continue;
+        const text = await readCsvResponse(response);
+        const people = parseSurveyCsvText(text);
+        if (!people || !Object.keys(people).length) continue;
+        SURVEY_BY_UNE[une] = people;
+        DATA[une] = DATA[une].map(seller => applySurveyToSeller(une, seller));
+        changed = true;
+      } catch (_) {
+        // En file:// algunos navegadores bloquean fetch. Los datos embebidos siguen funcionando.
+      }
+    }
+    if (changed) renderSellers();
+  }
+
+  function renderTabs() {
+    tabsEl.innerHTML = "";
+    Object.keys(DATA).forEach(une => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "tab" + (une === currentUne ? " active" : "");
+      btn.textContent = une;
+      btn.setAttribute("aria-pressed", une === currentUne ? "true" : "false");
+      btn.addEventListener("click", () => {
+        if (une === currentUne || isSwitching) return;
+
+        isSwitching = true;
+        closePanel();
+
+        viewport.classList.add("switching", "switching-out");
+
+        setTimeout(() => {
+          currentUne = une;
+          selectedSellerIndex = -1;
+      detailPanel.classList.remove("panel-left", "panel-right");
+          viewport.classList.remove("switching-out");
+          viewport.classList.add("switching-in");
+
+          renderTabs();
+          renderSellers();
+          uneBadge.textContent = une;
+          footerUne.textContent = une;
+
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              viewport.classList.remove("switching-in");
+            });
+          });
+
+          setTimeout(() => {
+            viewport.classList.remove("switching");
+            isSwitching = false;
+          }, 820);
+        }, 620);
+      });
+      tabsEl.appendChild(btn);
+    });
+  }
+
+
+  function buildThreadPath(sellers) {
+    if (!sellers || sellers.length < 2) return "";
+
+    // Orden espacial izquierda → derecha para que la trayectoria se lea como una historia.
+    const points = sellers
+      .map(s => ({x:Number(s.x), y:Number(s.y)}))
+      .sort((a,b) => a.x - b.x || a.y - b.y);
+
+    let d = `M ${points[0].x} ${points[0].y}`;
+
+    for (let i = 1; i < points.length; i++) {
+      const a = points[i - 1];
+      const b = points[i];
+      const dx = b.x - a.x;
+
+      // Curva tipo presentación/Prezi: suave, orgánica y continua.
+      const c1x = a.x + dx * .42;
+      const c2x = a.x + dx * .58;
+      const c1y = a.y;
+      const c2y = b.y;
+
+      d += ` C ${c1x} ${c1y}, ${c2x} ${c2y}, ${b.x} ${b.y}`;
+    }
+
+    return d;
+  }
+
+  function renderThreadNetwork(sellers) {
+    const d = buildThreadPath(sellers);
+
+    if (!d) {
+      threadNetwork.innerHTML = "";
+      return;
+    }
+
+    threadNetwork.innerHTML = `
+      <path class="thread-glow" d="${d}" pathLength="1"></path>
+      <path class="thread-shadow" d="${d}" pathLength="1"></path>
+      <path class="thread-main" d="${d}" pathLength="1"></path>
+    `;
+  }
+
+  function renderSellers() {
+    sellerLayer.innerHTML = "";
+    threadNetwork.innerHTML = "";
+    const sellers = DATA[currentUne];
+    sellers.forEach((seller, index) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "seller entering";
+      btn.style.setProperty("--i", index);
+      btn.style.left = seller.x + "%";
+      btn.style.top = seller.y + "%";
+      btn.setAttribute("aria-label", seller.name + ", " + seller.value);
+      if (seller.photo) btn.classList.add("has-photo");
+      btn.innerHTML = `
+        <span class="pulse" aria-hidden="true"></span>
+        <span class="ring" aria-hidden="true"></span>
+        <span class="avatar" style="${seller.photo ? `background-image:url('${seller.photo}'); --photo-position:${seller.photoPosition || 'center center'}` : ''}"><span>${seller.initials}</span></span>
+        <span class="thread" aria-hidden="true"></span>
+        <span class="label">${seller.name}</span>
+      `;
+      btn.addEventListener("click", () => openSeller(seller, btn, index));
+      btn.addEventListener("animationend", () => btn.classList.remove("entering"), {once:true});
+      sellerLayer.appendChild(btn);
+    });
+    renderThreadNetwork(sellers);
+    sellerCount.textContent = sellers.length + " vendedores";
+  }
+
+  function setSellerContent(seller) {
+    detailAvatar.textContent = seller.photo ? "" : seller.initials;
+    detailAvatar.style.backgroundImage = seller.photo ? `url('${seller.photo}')` : "";
+    detailAvatar.style.backgroundPosition = seller.photoPosition || "center center";
+    detailAvatar.style.backgroundSize = "cover";
+    detailAvatar.style.backgroundRepeat = "no-repeat";
+    detailName.textContent = seller.name;
+    detailMeta.textContent = currentUne + " · " + seller.role;
+
+    const opinions = Array.isArray(seller.rawOpinions)
+      ? seller.rawOpinions.filter(Boolean)
+      : [];
+
+    opinionChips.innerHTML = "";
+    opinionCount.textContent = opinions.length
+      ? `${opinions.length} opinión${opinions.length === 1 ? "" : "es"}`
+      : "";
+
+    if (!opinions.length) {
+      const empty = document.createElement("span");
+      empty.className = "opinion-chip empty";
+      empty.textContent = "VALORES PENDIENTES";
+      opinionChips.appendChild(empty);
+      return;
+    }
+
+    opinions.forEach(value => {
+      const chip = document.createElement("span");
+      chip.className = "opinion-chip";
+      chip.textContent = value;
+      opinionChips.appendChild(chip);
+    });
+  }
+
+
+
+  function positionDetailPanel(button) {
+    const x = parseFloat(button.style.left);
+
+    detailPanel.classList.remove("panel-left", "panel-right");
+
+    // Regla más útil:
+    // desde la mitad del mural hacia la derecha, la ficha se va a la izquierda.
+    // así no tapa los nodos que faltan por explorar.
+    if (x >= 48) {
+      detailPanel.classList.add("panel-left");
+    } else {
+      detailPanel.classList.add("panel-right");
+    }
+  }
+
+  function focusCameraOn(button) {
+    const x = parseFloat(button.style.left);
+    const y = parseFloat(button.style.top);
+    scene.style.transformOrigin = x + "% " + y + "%";
+  }
+
+  function openSeller(seller, button, sellerIndex) {
+    if (isChangingSeller || isSwitching) return;
+
+    const alreadyFocused = viewport.classList.contains("focused") && selectedButton;
+
+    // Primera apertura: zoom cinematográfico hacia la persona.
+    if (!alreadyFocused) {
+      selectedButton = button;
+      selectedSellerIndex = sellerIndex;
+      selectedButton.classList.add("selected");
+      positionDetailPanel(button);
+      focusCameraOn(button);
+      setSellerContent(seller);
+
+      viewport.classList.add("focused");
+      detailPanel.setAttribute("aria-hidden", "false");
+
+      setTimeout(() => {
+        detailPanel.classList.add("open");
+      }, 720);
+
+      return;
+    }
+
+    // Si se pulsa la misma persona, no reiniciamos la animación.
+    if (selectedButton === button) return;
+
+    // Cambio entre vendedores: la cámara se desliza y la ficha hace cross-fade.
+    isChangingSeller = true;
+    viewport.classList.add("changing-seller");
+    detailPanel.classList.add("switching-seller");
+
+    const previousButton = selectedButton;
+
+    // Empezamos a mover la cámara mientras desaparece suavemente la ficha anterior.
+    positionDetailPanel(button);
+    focusCameraOn(button);
+
+    setTimeout(() => {
+      previousButton.classList.remove("selected");
+      selectedButton = button;
+      selectedSellerIndex = sellerIndex;
+      selectedButton.classList.add("selected");
+
+      setSellerContent(seller);
+
+      // Pequeña pausa para que el cambio de contenido no se perciba brusco.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          detailPanel.classList.remove("switching-seller");
+        });
+      });
+    }, 430);
+
+    // Dejamos terminar el paneo antes de habilitar otro cambio.
+    setTimeout(() => {
+      viewport.classList.remove("changing-seller");
+      isChangingSeller = false;
+    }, 1950);
+  }
+
+  function closePanel() {
+    isChangingSeller = false;
+    viewport.classList.remove("changing-seller");
+    detailPanel.classList.remove("switching-seller");
+    detailPanel.classList.remove("open");
+    detailPanel.setAttribute("aria-hidden", "true");
+
+    setTimeout(() => {
+      viewport.classList.remove("focused");
+      scene.style.transformOrigin = "50% 50%";
+      if (selectedButton) {
+        selectedButton.classList.remove("selected");
+        selectedButton = null;
+      }
+      selectedSellerIndex = -1;
+      detailPanel.classList.remove("panel-left", "panel-right");
+    }, 320);
+  }
+
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && detailPanel.classList.contains("open")) {
+      closePanel();
+    }
+  });
+
+  viewport.addEventListener("click", (event) => {
+    if (!detailPanel.classList.contains("open")) return;
+    if (event.target.closest(".seller")) return;
+    if (event.target.closest(".detail-panel")) return;
+    closePanel();
+  });
+renderTabs();
+  renderSellers();
+})();
+</script>
+</body>
+</html>
